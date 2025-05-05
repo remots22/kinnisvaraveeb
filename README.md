@@ -20,6 +20,7 @@
 * Catboost
 * mermaid diagramm ülesehituse kohta
 * Seletada miks ainult need 3 linna
+* Link töötavale projektile - streamlit v folium 
 
 ---
 
@@ -27,6 +28,7 @@
 
 * Siia jutt kuidas scraperid töötasid, kuidas andmeid puhastasin jne
 * võltsandmetega näidised, mõni väike näide kuidas andmed algul olid
+* seletada lahti arhitektuuriperioodid - miks nii valisin
 
 ---
 
