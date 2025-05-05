@@ -46,6 +46,7 @@
 * Tähtvere vald on ka sees - ilmselt peaks ära võtma kuna liiga vähe andmeid (et andmed oleks ühtlased)
 * Streamliti kasutades on veidi keerulisem teha kaardirakendusi - disain & paigutus (kuna sisuliselt on eraldi 3 kaardirakendust ja 3 mudelit)
 * Välises kaustas (et kaitsta tooreid andmeid) panin andmed kujule hind_rm,x,y (muud elemendid eemaldatud QGIS jaoks). Nüüd on 3 eraldi faili tallinn_punktid.csv, tartu_punktid.csv, pärnu_punktid.csv mille põhjal teha kaardikihid. Kaardikihte ei tee otse labi leafleti andmete kaitsmiseks - leht näeb vaid keskmist asumi kohta (sellep vb peaks ka tahtvere valla ara votma & on anonüümsem)
+* Tähtvere vald ära võetud, peaks ühtlustama hiljem QGIS graduated varki
 
 
 ---
