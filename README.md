@@ -40,11 +40,16 @@
 * Analüüs Postmaniga
 * Avaandmetest (https://avaandmed.eesti.ee/datasets/tallinna-linnaosade-ja-asumite-kaardifailid) tõmbasin .SHP faili ning tegin selle lihtsuse huvites .geojson failiks - lihtsustab kaardirakenduse tegemist.
 * Töötlesin tln_asumid.py abil tooreid andmeid - uus geojson fail kus vaid geometry ja asum/linnaosa
+* Katsetan veidi streamlitiga - kas kaardirakenduseks mõistlik jne
+* vaja kontrollida kas tartul on endine tähtvere vald või mitte - kui on tuleks ilmselt ära võtta
+
 
 ---
 ## Kasutatud allikad
 
 https://avaandmed.eesti.ee/datasets/tallinna-linnaosade-ja-asumite-kaardifailid
+https://www.arcgis.com/apps/mapviewer/index.html?url=https://services7.arcgis.com/JHeJMqXQ296PjBWU/ArcGIS/rest/services/Keskuslinna_asumite_piirid/FeatureServer&source=sd
+https://www.arcgis.com/apps/mapviewer/index.html?url=https://gis.tartulv.ee/arcgis/rest/services/IT/GI_linnaosad/FeatureServer&source=sd
 
 ---
 
