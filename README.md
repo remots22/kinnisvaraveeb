@@ -42,6 +42,8 @@
 * Töötlesin tln_asumid.py abil tooreid andmeid - uus geojson fail kus vaid geometry ja asum/linnaosa
 * Katsetan veidi streamlitiga - kas kaardirakenduseks mõistlik jne
 * vaja kontrollida kas tartul on endine tähtvere vald või mitte - kui on tuleks ilmselt ära võtta
+* Tähtvere vald on ka sees - ilmselt peaks ära võtma kuna liiga vähe andmeid (et andmed oleks ühtlased)
+* Streamliti kasutades on veidi keerulisem teha kaardirakendusi - disain & paigutus (kuna sisuliselt on eraldi 3 kaardirakendust ja 3 mudelit)
 
 
 ---
