@@ -4,7 +4,7 @@
 ![Coverage](https://img.shields.io/codecov/c/github/remots22/kinnisvaraveeb)
 ![License](https://img.shields.io/github/license/remots22/kinnisvaraveeb)
 
-![Demo GIF](docs/img/demo.gif)
+![Demo GIF](test.png)
 
 - [Projekti ülesehitus](#projekti-ülesehitus)  
 - [Andmed](#andmed)
