@@ -38,12 +38,14 @@
 
 * Esmalt wayback machine
 * Analüüs Postmaniga
+* Scraperite tegemine, rakendamine
 * Avaandmetest (https://avaandmed.eesti.ee/datasets/tallinna-linnaosade-ja-asumite-kaardifailid) tõmbasin .SHP faili ning tegin selle lihtsuse huvites .geojson failiks - lihtsustab kaardirakenduse tegemist.
 * Töötlesin tln_asumid.py abil tooreid andmeid - uus geojson fail kus vaid geometry ja asum/linnaosa
 * Katsetan veidi streamlitiga - kas kaardirakenduseks mõistlik jne
 * vaja kontrollida kas tartul on endine tähtvere vald või mitte - kui on tuleks ilmselt ära võtta
 * Tähtvere vald on ka sees - ilmselt peaks ära võtma kuna liiga vähe andmeid (et andmed oleks ühtlased)
 * Streamliti kasutades on veidi keerulisem teha kaardirakendusi - disain & paigutus (kuna sisuliselt on eraldi 3 kaardirakendust ja 3 mudelit)
+* Välises kaustas (et kaitsta tooreid andmeid) panin andmed kujule hind_rm,x,y (muud elemendid eemaldatud QGIS jaoks).
 
 
 ---
