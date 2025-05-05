@@ -47,7 +47,7 @@ let kihid_map = {
 
 // legendi olek
 let tallinnAsumidLegend = null;
-
+let tartuAsumidLegend = null; // Legend for Tartu
 
 
 
@@ -129,6 +129,8 @@ function toggleKiht(linnaNimi, kiht, olekVeerg) {
             // see legendi tagasi panemine ajutine - peaks midagi paremat välja mõtlema
             if (linnaNimi === 'tallinn' && kiht === 'asumid') {
                 lisaLegendTLNAsumid();
+            } else if (linnaNimi === 'tartu' && kiht === 'asumid') {
+                lisaLegendTRTAsumid(); // Add Tartu legend
             }
         }
         näitaPopupi(`Kiht "${kiht}" lisatud linnale ${linnad[linnaNimi].nimi}`);
@@ -138,6 +140,8 @@ function toggleKiht(linnaNimi, kiht, olekVeerg) {
             kaart.removeLayer(kihiObjekt);
             if (linnaNimi === 'tallinn' && kiht === 'asumid') {
                 eemaldaLegendTLNAsumid();
+            } else if (linnaNimi === 'tartu' && kiht === 'asumid') {
+                eemaldaLegendTRTAsumid(); // Remove Tartu legend
             }
         }
         näitaPopupi(`Kiht "${kiht}" eemaldatud linnalt ${linnad[linnaNimi].nimi}`);
@@ -194,6 +198,55 @@ function eemaldaLegendTLNAsumid() {
     }
 }
 
+// ----------Tartu----------
+
+// uurida pretty breaks voimalust tallinnal ka - tartul tootab hasti aga tallinnal vaja head vahemikud valja moelda
+function TartuAsumidVarvid(hind) {
+    if (hind === null || hind === undefined) return '#cccccc'; // puuduv hall
+    return hind > 3500 ? '#08306b' : 
+           hind > 3000 ? '#2979b9' : 
+           hind > 2500 ? '#73b2d8' : 
+           hind > 2000 ? '#c8dcf0' : 
+           hind >= 1700 ? '#f7fbff' : 
+                        '#cccccc';
+}
+
+// sama nagu tallinnal
+function lisaLegendTRTAsumid() {
+    if (tartuAsumidLegend) {
+        kaart.removeControl(tartuAsumidLegend);
+    }
+    tartuAsumidLegend = L.control({position: 'bottomright'});
+    tartuAsumidLegend.onAdd = function (map) {
+        const div = L.DomUtil.create('div', 'info legend');
+        const grades = [1700, 2000, 2500, 3000, 3500];
+        const labels = [
+            '1700 - 2000', '2000 - 2500', '2500 - 3000',
+            '3000 - 3500', '3500+'
+        ];
+        const colors = [
+            '#f7fbff', '#c8dcf0', '#73b2d8',
+            '#2979b9', '#08306b'
+        ];
+        div.innerHTML += '<h4>Keskmine €/m² (Tartu)</h4>';
+        for (let i = 0; i < grades.length; i++) {
+            div.innerHTML +=
+                '<i style="background:' + colors[i] + '"></i> ' +
+                labels[i] + '<br>';
+        }
+        return div;
+    };
+    tartuAsumidLegend.addTo(kaart);
+}
+function eemaldaLegendTRTAsumid() {
+    if (tartuAsumidLegend) {
+        kaart.removeControl(tartuAsumidLegend);
+        tartuAsumidLegend = null;
+    }
+}
+
+// kihtide laadimine
+
 async function laadiKiht(linnaNimi, kiht) {
     let uusKiht;
     const geojsonPathBase = '../geoinfo/'; // kui muudad selle QGIS-i geojsoni asukohta ss muuda seda ka
@@ -244,8 +297,46 @@ async function laadiKiht(linnaNimi, kiht) {
                     näitaPopupi('Viga Tallinna asumite kihi laadimisel.');
 
                 }
+            } else if (linnaNimi === 'tartu') {
+                const geojsonUrl = '/geoinfo/QGIS/trt_asumid_keskmine_pretty.geojson';
+                console.log(`Attempting to fetch: ${geojsonUrl}`);
+                try {
+                    const response = await fetch(geojsonUrl);
+                    console.log(`Fetch response status: ${response.status}`);
+                    if (!response.ok) {
+                         console.error(`HTTP error! status: ${response.status}, statusText: ${response.statusText}`);
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    
+                    uusKiht = L.geoJSON(data, {
+                        style: function(feature) {
+                            return {
+                                fillColor: TartuAsumidVarvid(feature.properties.hind_rm_mean), //varvikunktsioon
+                                weight: 1,
+                                opacity: 1,
+                                color: 'grey',
+                                fillOpacity: 0.7
+                            };
+                        },
+                        onEachFeature: function(feature, layer) {
+                            const props = feature.properties;
+                            let popupContent = `<b>${props.asumi_nimi || 'Nimetu asum'}</b>`;
+                            if (props.hind_rm_mean !== null && props.hind_rm_mean !== undefined) {
+                               popupContent += `<br>Keskmine €/m²: ${props.hind_rm_mean.toFixed(2)}`;
+                           } else {
+                               popupContent += `<br>Keskmine €/m²: Andmed puuduvad`;
+                           }
+                           layer.bindPopup(popupContent);
+                       }
+                    });
+                    lisaLegendTRTAsumid();
+                } catch (error) {
+                    console.error('tartu geojson ei laadinud ära:', error);
+                    näitaPopupi('Viga Tartu asumite kihi laadimisel.');
+                }
             } else {
-                 // see prg placeholder
+                 // siia tuleb pärast Pärnu
                  uusKiht = L.geoJSON(null, { style: { color: '#4f46e5', weight: 2, opacity: 0.8, fillColor: '#4f46e5', fillOpacity: 0.2 } });
             }
             break;
@@ -282,6 +373,8 @@ async function laadiKiht(linnaNimi, kiht) {
              kaart.removeLayer(kihid_map[linnaNimi][kiht]);
              if (linnaNimi === 'tallinn' && kiht === 'asumid') {
                  eemaldaLegendTLNAsumid();
+             } else if (linnaNimi === 'tartu' && kiht === 'asumid') {
+                 eemaldaLegendTRTAsumid(); // kui vahetad linna tartu pealt ara, votab kihi ara
              }
         }
         
