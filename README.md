@@ -36,6 +36,16 @@
 
 * Siin räägin millesed probleemid esile kerkisid ja kuidas neid lahendasin - nt postman jne & wayback machine vark
 
+* Esmalt wayback machine
+* Analüüs Postmaniga
+* Avaandmetest (https://avaandmed.eesti.ee/datasets/tallinna-linnaosade-ja-asumite-kaardifailid) tõmbasin .SHP faili ning tegin selle lihtsuse huvites .geojson failiks - lihtsustab kaardirakenduse tegemist.
+* Töötlesin tln_asumid.py abil tooreid andmeid - uus geojson fail kus vaid geometry ja asum/linnaosa
+
+---
+## Kasutatud allikad
+
+https://avaandmed.eesti.ee/datasets/tallinna-linnaosade-ja-asumite-kaardifailid
+
 ---
 
 ## Autorid
