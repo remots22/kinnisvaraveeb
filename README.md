@@ -8,6 +8,7 @@
 
 - [Projekti ülesehitus](#projekti-ülesehitus)  
 - [Andmed](#andmed)
+- [Mudel](#mudel)
 - [Projekti kulg](#projekti-kulg)      
 - [Autorid](#autorid)
 
@@ -29,6 +30,12 @@
 * Siia jutt kuidas scraperid töötasid, kuidas andmeid puhastasin jne
 * võltsandmetega näidised, mõni väike näide kuidas andmed algul olid
 * seletada lahti arhitektuuriperioodid - miks nii valisin
+
+---
+
+## Mudel
+
+
 
 ---
 
