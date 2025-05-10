@@ -4,92 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kinnisvara kaardirakendus & hindade ennustusmudel</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+    
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.2/proj4leaflet.min.js"></script>
+    
+
+    <style>
+        .overlay-blend-multiply {
+            mix-blend-mode: multiply; 
+            opacity: 0.6;
+        }
+        
+        .leaflet-pane.gamKrigingPane {
+            z-index: 450 !important;
+        }
+    </style>
 </head>
 <body>
-    <div id="kaart"></div>
+    <div id="root"></div>
     
-    <!-- külgriba -->
-    <div class="külgriba" id="külgriba">
-        <div class="külgriba-tila" id="külgriba-tila">
-            <div class="külgriba-tila-ikoon"></div> 
-        </div>
-        <h1 class="külgriba-pealkiri">Vali linn</h1>
-        
-        <!-- linnanupp linnanupp need on need kes yleval vasakul -->
-        <div class="linna-nupud">
-            <button class="linna-nupp aktiivne" id="tallinn-nupp" onclick="valiLinn('tallinn')">
-                <span>Tallinn</span>
-            </button>
-            
-            <button class="linna-nupp" id="tartu-nupp" onclick="valiLinn('tartu')">
-                <span>Tartu</span>
-            </button>
-            
-            <button class="linna-nupp" id="pärnu-nupp" onclick="valiLinn('pärnu')">
-                <span>Pärnu</span>
-            </button>
-        </div>
-        <div class="linna-info" id="linna-info">
-            
-            <!-- Tallinna kihid -->
-            <div id="tallinn-kihid" class="kihi-kontrollerid">
-                <div class="kihi-grupp">
-                    <h4 class="kihi-pealkiri">Kihid</h4>
-                    <div class="kihi-valikud">
-                        <input type="checkbox" id="tln-asumid" name="tallinn-kiht" value="asumid" class="kihi-cb" checked>
-                        <label for="tln-asumid" class="kihi-nimi">Hinnad asumite põhjal</label>
-                        
-                        <input type="checkbox" id="tln-linnaosad" name="tallinn-kiht" value="linnaosad" class="kihi-cb">
-                        <label for="tln-linnaosad" class="kihi-nimi">Hinnad linnaosade põhjal</label>
-                        
-                        <input type="checkbox" id="tln-miljooalad" name="tallinn-kiht" value="miljööalad" class="kihi-cb">
-                        <label for="tln-miljooalad" class="kihi-nimi">Näita miljööalasid</label>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Tartu kihid -->
-            <div id="tartu-kihid" class="kihi-kontrollerid" style="display: none;">
-                <div class="kihi-grupp">
-                    <h4 class="kihi-pealkiri">Kihid</h4>
-                    <div class="kihi-valikud">
-                        <input type="checkbox" id="tar-asumid" name="tartu-kiht" value="asumid" class="kihi-cb">
-                        <label for="tar-asumid" class="kihi-nimi">Hinnad asumite põhjal</label>
-                        
-                        <input type="checkbox" id="tar-miljooalad" name="tartu-kiht" value="miljööalad" class="kihi-cb">
-                        <label for="tar-miljooalad" class="kihi-nimi">Näita miljööalasid</label>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Pärnu kihid -->
-            <div id="pärnu-kihid" class="kihi-kontrollerid" style="display: none;">
-                <div class="kihi-grupp">
-                    <h4 class="kihi-pealkiri">Kihid</h4>
-                    <div class="kihi-valikud">
-                        <input type="checkbox" id="par-asumid" name="pärnu-kiht" value="asumid" class="kihi-cb">
-                        <label for="par-asumid" class="kihi-nimi">Hinnad asumite põhjal</label>
-                        
-                        <input type="checkbox" id="par-miljooalad" name="pärnu-kiht" value="miljööalad" class="kihi-cb">
-                        <label for="par-miljooalad" class="kihi-nimi">Näita miljööalasid</label>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- see telefonile vb aitab -->
-    <button class="menüü-nupp" id="menüü-nupp">
-        <div class="menüü-ikoon">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-    </button>
-    <div class="popup" id="popup">Linn valitud: Tallinn</div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <script src="script.js"></script>
+    <script type="text/babel" src="script.js"></script>
 </body>
 </html>
