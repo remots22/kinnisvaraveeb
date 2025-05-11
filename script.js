@@ -424,9 +424,10 @@ const Kaardivaade = () => {
         kaart.getPane('gamKrigingPane').style.zIndex = 999;
         console.log('[Direct Test] Created custom pane with z-index:', kaart.getPane('gamKrigingPane').style.zIndex);
         
-        L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20,
-            attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &amp; <a href="http://stamen.com" target="_blank">Stamen Design</a>'
+        L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            subdomains: 'abcd',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a> | <a href="https://github.com/openmaptiles/positron-gl-style" target="_blank">Positron Style</a>'
         }).addTo(kaart);
 
         // see muudab koordinaatsysteemi L-EST97 -> wgs84
@@ -1006,15 +1007,19 @@ const InfoLeht = () => {
   );
 };
 const AllikadVaade = () => {
-  const accessDate = "May 9, 2025"; // vaadata kas nii viidata norm
-
   return (
     <div className="p-4 md:p-6">
       <JaotisePealkiri>Kasutatud Allikad</JaotisePealkiri>
       
       <div className="bg-white shadow-lg rounded-xl p-4 md:p-6">
+        <p className="text-sm text-gray-700 mb-4" style={{ lineHeight: '1.6' }}>
+          OpenStreetMap contributors. (n.d.). <em className="italic">OpenStreetMap</em>. <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">https://www.openstreetmap.org/copyright</a>
+        </p>
+        <p className="text-sm text-gray-700 mb-4" style={{ lineHeight: '1.6' }}>
+          CARTO. (n.d.). <em className="italic">CARTO Basemaps</em>. <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">https://carto.com/attributions</a>
+        </p>
         <p className="text-sm text-gray-700" style={{ lineHeight: '1.6' }}>
-          Stadia Maps, Inc. (n.d.). <em className="italic">Stadia Maps documentation</em>. Retrieved {accessDate}, from <a href="https://docs.stadiamaps.com/?utm_source=marketing_site&utm_content=navbar" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">https://docs.stadiamaps.com/?utm_source=marketing_site&utm_content=navbar</a>
+          OpenMapTiles. (n.d.). <em className="italic">Positron GL Style</em>. <a href="https://github.com/openmaptiles/positron-gl-style" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">https://github.com/openmaptiles/positron-gl-style</a>
         </p>
       </div>
     </div>
