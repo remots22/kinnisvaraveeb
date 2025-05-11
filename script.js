@@ -83,7 +83,7 @@ const Külgriba = ({ praeguneLeht, määraPraeguneLeht, kasMobiiliMenüüAvatud:
         määraAktiivseIndikaatoriStiil(prev => ({ ...prev, opacity: 0 }));
       }
     }
-  }, [praeguneLeht, kasMobiiliMenüüAvatud]); 
+  }, [praeguneLeht, mobileOpen]); 
 
 
   const NavLink = ({ item, isSubItem = false }) => (
@@ -1045,8 +1045,8 @@ const App = () => {
       <Külgriba 
         praeguneLeht={praeguneLeht} 
         määraPraeguneLeht={määraPraeguneLeht} 
-        kasMobiiliMenüüAvatud={kasMobiiliMenüüAvatud} 
-        lülitaMobiiliMenüü={lülitaMobiiliMenüü} 
+        kasMobiiliMenüüAvatud={mobileOpen} 
+        lülitaMobiiliMenüü={toggleMobile} 
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="md:hidden bg-white shadow-sm h-16 flex items-center justify-between px-4">
