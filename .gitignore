@@ -1,18 +1,28 @@
-# Node.js dependencies
 node_modules/
+.cache/
+.npm/
+.DS_Store
+Thumbs.db
 
-# npm logs
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build directory
+
+
+# dependencies
+app/node_modules/
+app/.pnp/
+app/.pnp.js
+app/coverage/
 app/build/
 
-# Cache directories
-.cache/
-.npm/
 
-# OS specific files
-.DS_Store
-Thumbs.db
+# secrets
+app/.env
+app/.env.local
+app/.env.development.local
+app/.env.test.local
+app/.env.production.local
+app/secrets.js
