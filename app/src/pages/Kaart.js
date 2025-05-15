@@ -58,11 +58,11 @@ const Kaart = () => {
     { nimi: 'Pärnu', koordinaadid: [24.4966, 58.3859], suum: 11 },
   ], []);
 
-  const TALLINN_GEOJSON_RADA = '/geoinfo/QGIS/Linnad/mapbox/tallinn/tallinn.geojson';
+  const TALLINN_GEOJSON_RADA = 'geoinfo/QGIS/Linnad/mapbox/tallinn/tallinn.geojson';
   const TALLINN_ALLIKA_ID = 'tallinn-hind-allikas';
-  const TARTU_GEOJSON_RADA = '/geoinfo/QGIS/Linnad/mapbox/tartu/tartu.geojson';
+  const TARTU_GEOJSON_RADA = 'geoinfo/QGIS/Linnad/mapbox/tartu/tartu.geojson';
   const TARTU_ALLIKA_ID = 'tartu-hind-allikas';
-  const PARNU_GEOJSON_RADA = '/geoinfo/QGIS/Linnad/mapbox/parnu/parnu.geojson';
+  const PARNU_GEOJSON_RADA = 'geoinfo/QGIS/Linnad/mapbox/parnu/parnu.geojson';
   const PARNU_ALLIKA_ID = 'parnu-hind-allikas';
 
   const hinnakategooriad = useMemo(() => [
