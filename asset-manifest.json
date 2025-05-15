@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/kinnisvaraveeb/static/css/main.60de22d8.css",
+    "main.js": "/kinnisvaraveeb/static/js/main.1bd9f35b.js",
+    "index.html": "/kinnisvaraveeb/index.html",
+    "main.60de22d8.css.map": "/kinnisvaraveeb/static/css/main.60de22d8.css.map",
+    "main.1bd9f35b.js.map": "/kinnisvaraveeb/static/js/main.1bd9f35b.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.60de22d8.css",
+    "static/js/main.1bd9f35b.js"
+  ]
+}
