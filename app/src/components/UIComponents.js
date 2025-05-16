@@ -164,3 +164,44 @@ export const SliderN = ({ id, silt, min, max, samm, vaartus, onMuutus, uhik, vaa
     </div>
   );
 };
+
+export const Tekstikast = React.forwardRef(({ 
+  label, 
+  väärtus, 
+  onMuutus, 
+  placeholder = '', 
+  tüüp = 'text', 
+  id,
+  vigaTeade,
+  disabled = false
+}, ref) => {
+  const komponendiId = id || `tekstikast-${Math.random().toString(36).substr(2, 9)}`;
+  
+  return (
+    <div className="tekstikast-konteiner mb-4">
+      {label && (
+        <label 
+          htmlFor={komponendiId} 
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          {label}
+        </label>
+      )}
+      <input
+        ref={ref}
+        type={tüüp}
+        id={komponendiId}
+        value={väärtus}
+        onChange={onMuutus}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={`w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+          vigaTeade ? 'border-red-500' : 'border-gray-300'
+        } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+      />
+      {vigaTeade && (
+        <p className="mt-1 text-sm text-red-600">{vigaTeade}</p>
+      )}
+    </div>
+  );
+});

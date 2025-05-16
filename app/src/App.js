@@ -15,7 +15,7 @@ export default function App() {
     switch (currentPage) {
       case 'map':
         return <Kaart />;
-      case 'prediction':
+      case 'ennustus':
         return <Mudel />;
       case 'info':
         return <Info />;

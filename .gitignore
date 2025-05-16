@@ -21,6 +21,7 @@ app/build/
 
 # secrets
 app/.env
+app/src/.env
 app/.env.local
 app/.env.development.local
 app/.env.test.local
