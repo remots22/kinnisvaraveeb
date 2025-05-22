@@ -27,3 +27,6 @@ app/.env.development.local
 app/.env.test.local
 app/.env.production.local
 app/secrets.js
+
+# Large files
+app/public/geoinfo/QGIS/Eesti/filtered_etak_ehr_hooned.geojson
