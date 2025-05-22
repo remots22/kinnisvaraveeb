@@ -66,7 +66,7 @@ const Kylgriba = ({ currentPage, setCurrentPage, isMobileMenuOpen, toggleMobileM
   return (
     <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-50 border-r border-gray-200 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:block`}>
       <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-blue-700">Kinnisvara</h1>
+        <div></div>
         <button onClick={toggleMobileMenu} className="md:hidden text-gray-600 hover:text-gray-800">
           <X size={24} />
         </button>

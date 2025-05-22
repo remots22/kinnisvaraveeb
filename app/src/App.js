@@ -37,7 +37,7 @@ export default function App() {
 
 
         <header className="md:hidden bg-white shadow-sm h-16 flex items-center justify-between px-4">
-           <h1 className="text-lg font-bold text-blue-700">Kinnisvara</h1>
+           <div></div>
           <button onClick={toggleMobileMenu} className="text-gray-600 hover:text-gray-800">
             <Menu size={24} />
           </button>

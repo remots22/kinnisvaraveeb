@@ -4,6 +4,7 @@ import { ChevronDown, Layers, X } from 'lucide-react';
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
+// uued legendid uutele kihtidele
 const hinnaVahemikud = [
   { min: 500, tekst: '500 - 1000 €/m²', piirjoon: '#08306b' },
   { min: 1000, tekst: '1000 - 1500 €/m²', piirjoon: '#08306b' },
@@ -14,6 +15,30 @@ const hinnaVahemikud = [
   { min: 3500, tekst: '3500 - 4000 €/m²', piirjoon: '#08306b' },
   { min: 4000, tekst: '4000 - 4500 €/m²', piirjoon: '#08306b' },
   { min: 4500, tekst: '4500+ €/m²', piirjoon: '#08306b' },
+];
+
+const vanusVahemikud = [
+  { min: 0, tekst: '0 - 5 aastat', piirjoon: '#08306b' },
+  { min: 5, tekst: '5 - 10 aastat', piirjoon: '#08306b' },
+  { min: 10, tekst: '10 - 15 aastat', piirjoon: '#08306b' },
+  { min: 15, tekst: '15 - 20 aastat', piirjoon: '#08306b' },
+  { min: 20, tekst: '20 - 30 aastat', piirjoon: '#08306b' },
+  { min: 30, tekst: '30 - 40 aastat', piirjoon: '#08306b' },
+  { min: 40, tekst: '40 - 50 aastat', piirjoon: '#08306b' },
+  { min: 50, tekst: '50 - 60 aastat', piirjoon: '#08306b' },
+  { min: 60, tekst: '60+ aastat', piirjoon: '#08306b' },
+];
+
+const ehitusAastaVahemikud = [
+  { min: 0, tekst: 'kuni 1940', piirjoon: '#08306b' },
+  { min: 1940, tekst: '1940 - 1960', piirjoon: '#08306b' },
+  { min: 1960, tekst: '1960 - 1975', piirjoon: '#08306b' },
+  { min: 1975, tekst: '1975 - 1990', piirjoon: '#08306b' },
+  { min: 1990, tekst: '1990 - 2000', piirjoon: '#08306b' },
+  { min: 2000, tekst: '2000 - 2010', piirjoon: '#08306b' },
+  { min: 2010, tekst: '2010 - 2018', piirjoon: '#08306b' },
+  { min: 2018, tekst: '2018 - 2022', piirjoon: '#08306b' },
+  { min: 2022, tekst: '2022+', piirjoon: '#08306b' },
 ];
 
 const sinisedVärvid = ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'];
@@ -41,6 +66,76 @@ const looPiirjooneVärviAvaldis = (stiil) => {
   return sinisedVärvid[8]; 
 };
 
+const looStatAvgPriceVärviAvaldis = (värvid) => [
+  'step',
+  ['get', 'avg_price'],
+  värvid[0], 500,
+  värvid[1], 1000,
+  värvid[2], 1500,
+  värvid[3], 2000,
+  värvid[4], 2500,
+  värvid[5], 3000,
+  värvid[6], 3500,
+  värvid[7], 4000,
+  värvid[8]
+];
+
+const looStatMedianPriceVärviAvaldis = (värvid) => [
+  'step',
+  ['get', 'median_price'],
+  värvid[0], 500,
+  värvid[1], 1000,
+  värvid[2], 1500,
+  värvid[3], 2000,
+  värvid[4], 2500,
+  värvid[5], 3000,
+  värvid[6], 3500,
+  värvid[7], 4000,
+  värvid[8]
+];
+
+const looStatAvgAgeVärviAvaldis = (värvid) => [
+  'step',
+  ['get', 'avg_age'],
+  värvid[0], 5,
+  värvid[1], 10,
+  värvid[2], 15,
+  värvid[3], 20,
+  värvid[4], 30,
+  värvid[5], 40,
+  värvid[6], 50,
+  värvid[7], 60,
+  värvid[8]
+];
+
+const looStatMedianAgeVärviAvaldis = (värvid) => [
+  'step',
+  ['get', 'median_age'],
+  värvid[0], 5,
+  värvid[1], 10,
+  värvid[2], 15,
+  värvid[3], 20,
+  värvid[4], 30,
+  värvid[5], 40,
+  värvid[6], 50,
+  värvid[7], 60,
+  värvid[8]
+];
+
+const looStatBuildYearVärviAvaldis = (värvid) => [
+  'step',
+  ['get', 'mode_build_year'],
+  värvid[0], 1940,
+  värvid[1], 1960,
+  värvid[2], 1975,
+  värvid[3], 1990,
+  värvid[4], 2000,
+  värvid[5], 2010,
+  värvid[6], 2018,
+  värvid[7], 2022,
+  värvid[8]
+];
+
 const Kaart = () => {
   const kaardiKonteinerRef = useRef(null);
   const kaardiRef = useRef(null); 
@@ -48,8 +143,13 @@ const Kaart = () => {
   const [näitaKihidePaneeli, setNäitaKihidePaneeli] = useState(false); 
   const kihidePaneelRef = useRef(null);
   const kihiLülitiNuppRef = useRef(null);
-  const [laiendatudKihiKategooriad, setLaiendatudKihiKategooriad] = useState({ Tallinn: false, Tartu: false, Pärnu: false, Eesti: true }); 
-  const [aktiivseKihiDetailid, setAktiivseKihiDetailid] = useState({ linn: 'Eesti', stiil: 'magma' }); 
+  const [laiendatudKihiKategooriad, setLaiendatudKihiKategooriad] = useState({ 
+    Tallinn: false,
+    Tartu: false,
+    Pärnu: false,
+    Eesti: true 
+  }); 
+  const [aktiivseKihiDetailid, setAktiivseKihiDetailid] = useState({ linn: 'Eesti', kihiId: 'kriging', stiil: 'magma' }); 
   const [legendNähtav, setLegendNähtav] = useState(true); 
   const [mapLayersLoaded, setMapLayersLoaded] = useState(false);
 
@@ -62,10 +162,16 @@ const Kaart = () => {
 
   const TALLINN_GEOJSON_RADA = `${process.env.PUBLIC_URL}/geoinfo/QGIS/Linnad/mapbox/tallinn/tallinn.geojson`;
   const TALLINN_ALLIKA_ID = 'tallinn-hind-allikas';
+  const TALLINN_ASTAT_GEOJSON_RADA = `${process.env.PUBLIC_URL}/geoinfo/QGIS/Linnad/mapbox/tallinn/tallinn_astat.geojson`;
+  const TALLINN_ASTAT_ALLIKA_ID = 'tallinn-astat-allikas';
   const TARTU_GEOJSON_RADA = `${process.env.PUBLIC_URL}/geoinfo/QGIS/Linnad/mapbox/tartu/tartu.geojson`;
   const TARTU_ALLIKA_ID = 'tartu-hind-allikas';
+  const TARTU_ASTAT_GEOJSON_RADA = `${process.env.PUBLIC_URL}/geoinfo/QGIS/Linnad/mapbox/tartu/tartu_astat.geojson`;
+  const TARTU_ASTAT_ALLIKA_ID = 'tartu-astat-allikas';
   const PARNU_GEOJSON_RADA = `${process.env.PUBLIC_URL}/geoinfo/QGIS/Linnad/mapbox/parnu/parnu.geojson`;
   const PARNU_ALLIKA_ID = 'parnu-hind-allikas';
+  const PARNU_ASTAT_GEOJSON_RADA = `${process.env.PUBLIC_URL}/geoinfo/QGIS/Linnad/mapbox/parnu/parnu_astat.geojson`;
+  const PARNU_ASTAT_ALLIKA_ID = 'parnu-astat-allikas';
   const EESTI_GEOJSON_RADA = `${process.env.PUBLIC_URL}/geoinfo/QGIS/Eesti/eesti500_100_res2000.geojson`;
   const EESTI_ALLIKA_ID = 'eesti-hind-allikas';
 
@@ -77,68 +183,443 @@ const Kaart = () => {
       koordinaadid: linnad.find(l=>l.nimi === 'Eesti').koordinaadid,
       suum: linnad.find(l=>l.nimi === 'Eesti').suum,
       alamkihid: [
-        { id: 'sinine', nimi: 'Hind €/rm (kriging, sinine)', tüüp: 'geojson', kihiIdEesliide: 'eesti-hind',
+        { id: 'kriging-sinine', nimi: 'Hind €/rm (kriging)', stiil: 'sinine', tüüp: 'geojson', kihiIdEesliide: 'eesti-hind',
           kujundus: { 'fill-color': looTäiteVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') } },
-        { id: 'magma', nimi: 'Hind €/rm (kriging, magma)', tüüp: 'geojson', kihiIdEesliide: 'eesti-hind',
+        { id: 'kriging-magma', nimi: 'Hind €/rm (kriging)', stiil: 'magma', tüüp: 'geojson', kihiIdEesliide: 'eesti-hind',
           kujundus: { 'fill-color': looTäiteVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') } }
       ]
     },
     {
       nimi: 'Tallinn',
-      allikaId: TALLINN_ALLIKA_ID,
-      geoJsonRada: TALLINN_GEOJSON_RADA,
       koordinaadid: linnad.find(l=>l.nimi === 'Tallinn').koordinaadid,
       suum: linnad.find(l=>l.nimi === 'Tallinn').suum,
       alamkihid: [
-        { id: 'sinine', nimi: 'Hind €/rm (kriging, sinine)', tüüp: 'geojson', kihiIdEesliide: 'tallinn-hind',
-          kujundus: { 'fill-color': looTäiteVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') } },
-        { id: 'magma', nimi: 'Hind €/rm (kriging, magma)', tüüp: 'geojson', kihiIdEesliide: 'tallinn-hind',
-          kujundus: { 'fill-color': looTäiteVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') } }
+        { 
+          allikaId: TALLINN_ALLIKA_ID,
+          geoJsonRada: TALLINN_GEOJSON_RADA,
+          id: 'kriging-sinine', 
+          nimi: 'Hind €/rm (kriging)', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-hind',
+          kujundus: { 'fill-color': looTäiteVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') } 
+        },
+        { 
+          allikaId: TALLINN_ALLIKA_ID,
+          geoJsonRada: TALLINN_GEOJSON_RADA,
+          id: 'kriging-magma', 
+          nimi: 'Hind €/rm (kriging)', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-hind',
+          kujundus: { 'fill-color': looTäiteVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') } 
+        },
+        
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'avg_price-sinine', 
+          nimi: 'Keskmine hind', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatAvgPriceVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Keskmine hind', väli: 'avg_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'avg_price-magma', 
+          nimi: 'Keskmine hind', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatAvgPriceVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Keskmine hind', väli: 'avg_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'median_price-sinine', 
+          nimi: 'Mediaanhind', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatMedianPriceVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Mediaanhind', väli: 'median_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'median_price-magma', 
+          nimi: 'Mediaanhind', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatMedianPriceVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Mediaanhind', väli: 'median_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'avg_age-sinine', 
+          nimi: 'Keskmine vanus', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatAvgAgeVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Keskmine vanus', väli: 'avg_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'avg_age-magma', 
+          nimi: 'Keskmine vanus', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatAvgAgeVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Keskmine vanus', väli: 'avg_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'median_age-sinine', 
+          nimi: 'Mediaanvanus', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatMedianAgeVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Mediaanvanus', väli: 'median_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'median_age-magma', 
+          nimi: 'Mediaanvanus', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatMedianAgeVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Mediaanvanus', väli: 'median_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'mode_build_year-sinine', 
+          nimi: 'Ehitusaasta mood', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatBuildYearVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Ehitusaasta mood', väli: 'mode_build_year', ühik: '' } 
+        },
+        { 
+          allikaId: TALLINN_ASTAT_ALLIKA_ID,
+          geoJsonRada: TALLINN_ASTAT_GEOJSON_RADA,
+          id: 'mode_build_year-magma', 
+          nimi: 'Ehitusaasta mood', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tallinn-stat',
+          kujundus: { 'fill-color': looStatBuildYearVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Ehitusaasta mood', väli: 'mode_build_year', ühik: '' } 
+        }
       ]
     },
     {
       nimi: 'Tartu',
-      allikaId: TARTU_ALLIKA_ID,
-      geoJsonRada: TARTU_GEOJSON_RADA,
       koordinaadid: linnad.find(l=>l.nimi === 'Tartu').koordinaadid,
       suum: linnad.find(l=>l.nimi === 'Tartu').suum,
       alamkihid: [
-        { id: 'sinine', nimi: 'Hind €/rm (kriging, sinine)', tüüp: 'geojson', kihiIdEesliide: 'tartu-hind',
-          kujundus: { 'fill-color': looTäiteVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') } },
-        { id: 'magma', nimi: 'Hind €/rm (kriging, magma)', tüüp: 'geojson', kihiIdEesliide: 'tartu-hind',
-          kujundus: { 'fill-color': looTäiteVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') } }
+        { 
+          allikaId: TARTU_ALLIKA_ID,
+          geoJsonRada: TARTU_GEOJSON_RADA,
+          id: 'kriging-sinine', 
+          nimi: 'Hind €/rm (kriging)', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-hind',
+          kujundus: { 'fill-color': looTäiteVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') } 
+        },
+        { 
+          allikaId: TARTU_ALLIKA_ID,
+          geoJsonRada: TARTU_GEOJSON_RADA,
+          id: 'kriging-magma', 
+          nimi: 'Hind €/rm (kriging)', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-hind',
+          kujundus: { 'fill-color': looTäiteVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') } 
+        },
+        
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'avg_price-sinine', 
+          nimi: 'Keskmine hind', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatAvgPriceVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Keskmine hind', väli: 'avg_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'avg_price-magma', 
+          nimi: 'Keskmine hind', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatAvgPriceVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Keskmine hind', väli: 'avg_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'median_price-sinine', 
+          nimi: 'Mediaanhind', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatMedianPriceVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Mediaanhind', väli: 'median_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'median_price-magma', 
+          nimi: 'Mediaanhind', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatMedianPriceVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Mediaanhind', väli: 'median_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'avg_age-sinine', 
+          nimi: 'Keskmine vanus', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatAvgAgeVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Keskmine vanus', väli: 'avg_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'avg_age-magma', 
+          nimi: 'Keskmine vanus', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatAvgAgeVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Keskmine vanus', väli: 'avg_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'median_age-sinine', 
+          nimi: 'Mediaanvanus', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatMedianAgeVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Mediaanvanus', väli: 'median_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'median_age-magma', 
+          nimi: 'Mediaanvanus', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatMedianAgeVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Mediaanvanus', väli: 'median_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'mode_build_year-sinine', 
+          nimi: 'Ehitusaasta mood', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatBuildYearVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Ehitusaasta mood', väli: 'mode_build_year', ühik: '' } 
+        },
+        { 
+          allikaId: TARTU_ASTAT_ALLIKA_ID,
+          geoJsonRada: TARTU_ASTAT_GEOJSON_RADA,
+          id: 'mode_build_year-magma', 
+          nimi: 'Ehitusaasta mood', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'tartu-stat',
+          kujundus: { 'fill-color': looStatBuildYearVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Ehitusaasta mood', väli: 'mode_build_year', ühik: '' } 
+        }
       ]
     },
     {
       nimi: 'Pärnu',
-      allikaId: PARNU_ALLIKA_ID,
-      geoJsonRada: PARNU_GEOJSON_RADA,
       koordinaadid: linnad.find(l=>l.nimi === 'Pärnu').koordinaadid,
       suum: linnad.find(l=>l.nimi === 'Pärnu').suum,
       alamkihid: [
-        { id: 'sinine', nimi: 'Hind €/rm (kriging, sinine)', tüüp: 'geojson', kihiIdEesliide: 'parnu-hind',
-          kujundus: { 'fill-color': looTäiteVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') } },
-        { id: 'magma', nimi: 'Hind €/rm (kriging, magma)', tüüp: 'geojson', kihiIdEesliide: 'parnu-hind',
-          kujundus: { 'fill-color': looTäiteVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') } }
+        { 
+          allikaId: PARNU_ALLIKA_ID,
+          geoJsonRada: PARNU_GEOJSON_RADA,
+          id: 'kriging-sinine', 
+          nimi: 'Hind €/rm (kriging)', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-hind',
+          kujundus: { 'fill-color': looTäiteVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') } 
+        },
+        { 
+          allikaId: PARNU_ALLIKA_ID,
+          geoJsonRada: PARNU_GEOJSON_RADA,
+          id: 'kriging-magma', 
+          nimi: 'Hind €/rm (kriging)', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-hind',
+          kujundus: { 'fill-color': looTäiteVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') } 
+        },
+        
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'avg_price-sinine', 
+          nimi: 'Keskmine hind', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatAvgPriceVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Keskmine hind', väli: 'avg_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'avg_price-magma', 
+          nimi: 'Keskmine hind', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatAvgPriceVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Keskmine hind', väli: 'avg_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'median_price-sinine', 
+          nimi: 'Mediaanhind', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatMedianPriceVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Mediaanhind', väli: 'median_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'median_price-magma', 
+          nimi: 'Mediaanhind', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatMedianPriceVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Mediaanhind', väli: 'median_price', ühik: '€/m²' } 
+        },
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'avg_age-sinine', 
+          nimi: 'Keskmine vanus', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatAvgAgeVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Keskmine vanus', väli: 'avg_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'avg_age-magma', 
+          nimi: 'Keskmine vanus', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatAvgAgeVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Keskmine vanus', väli: 'avg_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'median_age-sinine', 
+          nimi: 'Mediaanvanus', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatMedianAgeVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Mediaanvanus', väli: 'median_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'median_age-magma', 
+          nimi: 'Mediaanvanus', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatMedianAgeVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Mediaanvanus', väli: 'median_age', ühik: 'aastat' } 
+        },
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'mode_build_year-sinine', 
+          nimi: 'Ehitusaasta mood', 
+          stiil: 'sinine',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatBuildYearVärviAvaldis(sinisedVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('sinine') },
+          tooltip: { pealkiri: 'Ehitusaasta mood', väli: 'mode_build_year', ühik: '' } 
+        },
+        { 
+          allikaId: PARNU_ASTAT_ALLIKA_ID,
+          geoJsonRada: PARNU_ASTAT_GEOJSON_RADA,
+          id: 'mode_build_year-magma', 
+          nimi: 'Ehitusaasta mood', 
+          stiil: 'magma',
+          tüüp: 'geojson', 
+          kihiIdEesliide: 'parnu-stat',
+          kujundus: { 'fill-color': looStatBuildYearVärviAvaldis(magmaVärvid), 'fill-opacity': 0.7, 'fill-outline-color': looPiirjooneVärviAvaldis('magma') },
+          tooltip: { pealkiri: 'Ehitusaasta mood', väli: 'mode_build_year', ühik: '' } 
+        }
       ]
     }
-  ], [linnad, EESTI_ALLIKA_ID, EESTI_GEOJSON_RADA, TALLINN_ALLIKA_ID, TALLINN_GEOJSON_RADA, TARTU_ALLIKA_ID, TARTU_GEOJSON_RADA, PARNU_ALLIKA_ID, PARNU_GEOJSON_RADA]);
+  ], [linnad]);
 
   const vahetaKihiKategooriaLaiendust = (kategooriaNimi) => {
     setLaiendatudKihiKategooriad(eelnev => ({ ...eelnev, [kategooriaNimi]: !eelnev[kategooriaNimi] }));
   };
 
-  const haldaKihiValikut = (linnaNimi, kihiStiiliId) => {
-    console.log('[Kaart.js] haldaKihiValikut kutsutud:', { linnaNimi, kihiStiiliId });
+  const haldaKihiValikut = (linnaNimi, kihiId, kihiStiil = null) => {
+    console.log('[Kaart.js] haldaKihiValikut kutsutud:', { linnaNimi, kihiId, kihiStiil });
     const praeguneLinnDetailides = aktiivseKihiDetailid?.linn === linnaNimi;
-    const praeguneStiilDetailides = aktiivseKihiDetailid?.stiil === kihiStiiliId;
+    const praeguneKihiIdDetailides = aktiivseKihiDetailid?.kihiId === kihiId;
     
     let uuedDetailid;
-    if (praeguneLinnDetailides && praeguneStiilDetailides) {
+    if (praeguneLinnDetailides && praeguneKihiIdDetailides) {
       uuedDetailid = null; // tühistab valiku
       console.log('[Kaart.js] haldaKihiValikut: Valik tühistatud.');
     } else {
-      uuedDetailid = { linn: linnaNimi, stiil: kihiStiiliId };
+      uuedDetailid = { linn: linnaNimi, kihiId: kihiId, stiil: kihiStiil || 'sinine' };
       console.log('[Kaart.js] haldaKihiValikut: Uued aktiivse kihi detailid:', uuedDetailid);
     }
     setAktiivseKihiDetailid(uuedDetailid);
@@ -171,25 +652,43 @@ const Kaart = () => {
     });
 
     kaardiRef.current.on('load', () => {
+      const processedSources = new Set();
+      
       hinnakategooriad.forEach(kategooria => {
-        if (kategooria.alamkihid && kategooria.alamkihid.length > 0) { 
-          const allikaId = kategooria.allikaId;
-          const geoJsonRada = kategooria.geoJsonRada;
-          
-          if (!kaardiRef.current.getSource(allikaId)) {
-            kaardiRef.current.addSource(allikaId, {
-              type: 'geojson',
-              data: geoJsonRada
-            });
+        if (kategooria.alamkihid && kategooria.alamkihid.length > 0) {
+          if (kategooria.allikaId && kategooria.geoJsonRada) {
+            const allikaId = kategooria.allikaId;
+            if (!processedSources.has(allikaId)) {
+              processedSources.add(allikaId);
+              kaardiRef.current.addSource(allikaId, {
+                type: 'geojson',
+                data: kategooria.geoJsonRada
+              });
+            }
           }
-
+          
+          // kui eraldi allikas
           kategooria.alamkihid.forEach(kiht => {
+            // omal allikas
+            if (kiht.allikaId && kiht.geoJsonRada) {
+              const allikaId = kiht.allikaId;
+              if (!processedSources.has(allikaId)) {
+                processedSources.add(allikaId);
+                kaardiRef.current.addSource(allikaId, {
+                  type: 'geojson',
+                  data: kiht.geoJsonRada
+                });
+              }
+            }
+            
             const mapKihiId = `${kiht.kihiIdEesliide}-${kiht.id}`;
+            const sourceId = kiht.allikaId || kategooria.allikaId;
+            
             if (!kaardiRef.current.getLayer(mapKihiId)) {
               kaardiRef.current.addLayer({
                 id: mapKihiId,
                 type: 'fill',
-                source: allikaId,
+                source: sourceId,
                 paint: kiht.kujundus, 
                 layout: {
                   // kihi nähtavusega tegeleb alles kui koik kihid loaded
@@ -204,7 +703,7 @@ const Kaart = () => {
       // see tegeleb GeoJSON kihtidega tooltip poupupi jaoks - siin hetkel mingisugune jama 
       const geoJsonKihiIdd = [];
       hinnakategooriad.forEach(kategooria => {
-          if (kategooria.alamkihid && kategooria.allikaId) { 
+          if (kategooria.alamkihid) { 
               kategooria.alamkihid.forEach(alamKiht => {
                   if (alamKiht.tüüp === 'geojson' && alamKiht.kihiIdEesliide && alamKiht.id) {
                       const mapKihiId = `${alamKiht.kihiIdEesliide}-${alamKiht.id}`;
@@ -221,12 +720,45 @@ const Kaart = () => {
         kaardiRef.current.on('mousemove', kihiId, (sündmus) => {
           if (sündmus.features.length > 0) {
             const omadus = sündmus.features[0];
-            const minPrice = omadus.properties.min_price;
-            const maxPrice = omadus.properties.max_price;
+            
+            // Leida kihi tooltip info
+            let tooltipSisu = '';
+            
+            for (const kategooria of hinnakategooriad) {
+              if (!kategooria.alamkihid) continue;
+              
+              const alamkiht = kategooria.alamkihid.find(k => `${k.kihiIdEesliide}-${k.id}` === kihiId);
+              if (alamkiht) {
+                if (alamkiht.tooltip) {
+                  const väli = alamkiht.tooltip.väli;
+                  const väärtus = omadus.properties[väli];
+                  const asumi_nimi = omadus.properties.asumi_nimi || '';
+                  const formattedValue = väärtus !== undefined && väärtus !== null ? parseFloat(väärtus).toFixed(0) : 'N/A';
+                  tooltipSisu = `${asumi_nimi ? asumi_nimi + ': ' : ''}${alamkiht.tooltip.pealkiri}: ${formattedValue} ${alamkiht.tooltip.ühik}`;
+                } 
+                // selle peaks muutma vb hiljem aga prg ok - kui veel kihte kus erinevad ss muuta
+                else if (kihiId.includes('hind')) {
+                  const minPrice = omadus.properties.min_price;
+                  const maxPrice = omadus.properties.max_price;
+                  tooltipSisu = `Hind: ${minPrice !== undefined && minPrice !== null ? parseFloat(minPrice).toFixed(0) : 'N/A'} - ${maxPrice !== undefined && maxPrice !== null ? parseFloat(maxPrice).toFixed(0) : 'N/A'} €/rm`;
+                }
+                
+                break;
+              }
+            }
+            
+            if (!tooltipSisu) {
+              const props = omadus.properties;
+              if (props.asumi_nimi) {
+                tooltipSisu = `${props.asumi_nimi}`;
+              } else {
+                tooltipSisu = "Info pole saadaval";
+              }
+            }
 
             kohtspikriAken
               .setLngLat(sündmus.lngLat)
-              .setHTML(`Hind: ${minPrice !== undefined && minPrice !== null ? parseFloat(minPrice).toFixed(0) : 'N/A'} - ${maxPrice !== undefined && maxPrice !== null ? parseFloat(maxPrice).toFixed(0) : 'N/A'} €/rm`)
+              .setHTML(tooltipSisu)
               .addTo(kaardiRef.current);
           }
         });
@@ -274,7 +806,12 @@ const Kaart = () => {
           const täisKihiId = `${kiht.kihiIdEesliide}-${kiht.id}`;
           if (kaardiRef.current.getLayer(täisKihiId)) {
             let peaksOlemaNähtav = false;
-            if (aktiivseKihiDetailid && kategooria.nimi === aktiivseKihiDetailid.linn && kiht.id === aktiivseKihiDetailid.stiil) {
+            
+            // Kontrolli kas kiht peaks olema nähtav valitud baaskihi ja stiili alusel
+            if (aktiivseKihiDetailid && 
+                kategooria.nimi === aktiivseKihiDetailid.linn &&
+                kiht.id.split('-')[0] === aktiivseKihiDetailid.kihiId &&
+                kiht.stiil === aktiivseKihiDetailid.stiil) {
               peaksOlemaNähtav = true;
             }
             
@@ -308,7 +845,6 @@ const Kaart = () => {
       }
     } else {
       console.log('[Kaart.js] Aktiivseid kihi detaile pole (või linn puudub), et lennata linna.');
-      // Võimalik loogika: kui kiht on tühistatud, lenda Eesti üldvaatesse
       const eestiVaade = linnad.find(l => l.nimi === 'Eesti');
       if (eestiVaade && kaardiRef.current && kaardiRef.current.isStyleLoaded()) {
          console.log('[Kaart.js] Aktiivne kiht tühistatud, lennatakse Eesti üldvaatesse.');
@@ -346,52 +882,132 @@ const Kaart = () => {
     };
   }, [näitaKihidePaneeli]);
 
-  const legendiVärvid = useMemo(() => {
-    if (aktiivseKihiDetailid?.stiil === 'magma') {
-      return magmaVärvid;
+
+  const legendiInfo = useMemo(() => {
+    let result = {
+      värvid: sinisedVärvid,
+      vahemikud: hinnaVahemikud,
+      ühik: '€/m²',
+      kirjeldus: 'Keskmine m² hind piirkonniti'
+    };
+    
+    if (!aktiivseKihiDetailid) return result;
+    
+    if (aktiivseKihiDetailid.stiil === 'magma') {
+      result.värvid = magmaVärvid;
+    } else {
+      result.värvid = sinisedVärvid;
     }
-    return sinisedVärvid; 
+    
+    const baseId = aktiivseKihiDetailid.kihiId;
+    if (baseId === 'kriging') {
+      result.vahemikud = hinnaVahemikud;
+      result.ühik = '€/m²';
+      result.kirjeldus = 'Keskmine m² hind piirkonniti';
+    } else if (baseId === 'avg_price') {
+      result.vahemikud = hinnaVahemikud;
+      result.ühik = '€/m²';
+      result.kirjeldus = 'Keskmine m² hind asumites';
+    } else if (baseId === 'median_price') {
+      result.vahemikud = hinnaVahemikud;
+      result.ühik = '€/m²';
+      result.kirjeldus = 'Mediaanhind asumites';
+    } else if (baseId === 'avg_age' || baseId === 'median_age') {
+      result.vahemikud = vanusVahemikud;
+      result.ühik = 'aastat';
+      result.kirjeldus = baseId === 'avg_age' ? 'Keskmine kinnisvara vanus asumites' : 'Mediaanvanus asumites';
+    } else if (baseId === 'mode_build_year') {
+      result.vahemikud = ehitusAastaVahemikud;
+      result.ühik = '';
+      result.kirjeldus = 'Enim levinud ehitusaasta asumites';
+    }
+    
+    return result;
   }, [aktiivseKihiDetailid]);
 
   const legendiPealkiri = useMemo(() => {
     if (!aktiivseKihiDetailid) return "Vali kiht";
     const kategooria = hinnakategooriad.find(k => k.nimi === aktiivseKihiDetailid.linn);
-    const kiht = kategooria?.alamkihid.find(l => l.id === aktiivseKihiDetailid.stiil);
-    return kiht ? `${aktiivseKihiDetailid.linn} - ${kiht.nimi}` : "Vali kiht";
+    if (!kategooria) return "Vali kiht";
+    
+    const baseId = aktiivseKihiDetailid.kihiId;
+    const stiil = aktiivseKihiDetailid.stiil;
+    const kiht = kategooria.alamkihid.find(k => 
+      k.id.split('-')[0] === baseId && 
+      k.stiil === stiil
+    );
+    
+    if (!kiht) return "Vali kiht";
+    return `${aktiivseKihiDetailid.linn}: ${kiht.nimi}`;
   }, [aktiivseKihiDetailid, hinnakategooriad]);
 
   return (
     <div className="relative h-full flex flex-col">
-
       <div className="flex-grow p-4 pl-6 pr-6 pt-2 pb-2">
         <div ref={kaardiKonteinerRef} className="w-full h-full rounded-lg shadow-md overflow-hidden relative">
- 
-        <div className="absolute bottom-4 left-4 z-10">
-          <button 
-            ref={kihiLülitiNuppRef}
-            onClick={() => setNäitaKihidePaneeli(!näitaKihidePaneeli)} 
-            className="bg-white p-2 rounded-md shadow-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Ava/sulge kihtide paneel"
-          >
-            <Layers size={24} className="text-gray-700" />
-          </button>
-        </div>
-
-        {/* New Layer Selection Panel */}
-        <div 
-          ref={kihidePaneelRef} 
-          className={`absolute bottom-16 left-4 z-20 bg-white rounded-lg shadow-xl w-72 max-h-[calc(100vh-10rem)] overflow-y-auto p-4 border border-gray-200 transition-opacity duration-300 ease-in-out ${näitaKihidePaneeli ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
-        >
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-semibold text-gray-800">Kihtide valik</h3>
+          <div className="absolute bottom-4 left-4 z-10">
             <button 
-              onClick={() => setNäitaKihidePaneeli(false)} 
-              className="p-1 text-gray-500 hover:text-gray-700 px-2 py-0.5 rounded hover:bg-gray-100 transition-colors"
-              aria-label="Sulge kihtide paneel"
+              ref={kihiLülitiNuppRef}
+              onClick={() => setNäitaKihidePaneeli(!näitaKihidePaneeli)} 
+              className="bg-white p-2 rounded-md shadow-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Ava/sulge kihtide paneel"
             >
-              <X size={20} />
+              <Layers size={24} className="text-gray-700" />
             </button>
           </div>
+
+          <div 
+            ref={kihidePaneelRef} 
+            className={`absolute bottom-16 left-4 z-20 bg-white rounded-lg shadow-xl w-72 max-h-[calc(100vh-10rem)] overflow-y-auto border border-gray-200 transition-opacity duration-300 ease-in-out flex flex-col ${näitaKihidePaneeli ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+          >
+          <div className="sticky top-0 bg-white z-10 px-4 pt-4 pb-4 border-b border-gray-200">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-800">Kihtide valik</h3>
+              
+              <div className="flex items-center space-x-3">
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => {
+                      if (aktiivseKihiDetailid) {
+                        setAktiivseKihiDetailid({...aktiivseKihiDetailid, stiil: 'sinine'});
+                      }
+                    }}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      aktiivseKihiDetailid?.stiil === 'sinine' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                    }`}
+                  >
+                    Sinine
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (aktiivseKihiDetailid) {
+                        setAktiivseKihiDetailid({...aktiivseKihiDetailid, stiil: 'magma'});
+                      }
+                    }}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      aktiivseKihiDetailid?.stiil === 'magma' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                    }`}
+                  >
+                    Magma
+                  </button>
+                </div>
+                
+                <button 
+                  onClick={() => setNäitaKihidePaneeli(false)} 
+                  className="p-1 text-gray-500 hover:text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                  aria-label="Sulge kihtide paneel"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-4 pt-2 overflow-y-auto flex-grow">
           
           {hinnakategooriad.map(kategooria => {
             console.log('[Kaart.js] Rendering category in Kihtide valik:', kategooria.nimi); 
@@ -406,27 +1022,82 @@ const Kaart = () => {
                 </button>
                 {laiendatudKihiKategooriad[kategooria.nimi] && (
                   <div className="pl-3 pt-1 border-l border-gray-200 ml-2">
-                    {kategooria.alamkihid.map(kiht => (
-                      <button 
-                        key={kiht.id} 
-                        onClick={() => haldaKihiValikut(kategooria.nimi, kiht.id)}
-                        className={`w-full text-left py-1.5 px-2 text-sm rounded-md transition-colors mb-1 last:mb-0 
-                                  ${aktiivseKihiDetailid && aktiivseKihiDetailid.linn === kategooria.nimi && aktiivseKihiDetailid.stiil === kiht.id 
-                                    ? 'bg-blue-500 text-white font-semibold' 
-                                    : 'text-gray-600 hover:bg-gray-50'}`}
-                      >
-                        {kiht.nimi}
-                      </button>
-                    ))}
+                    {(() => {
+                      const statisticLayers = [];
+                      const krigingLayers = [];
+                      
+                      Array.from(new Set(kategooria.alamkihid.map(kiht => kiht.nimi)))
+                        .forEach(uniqueNimi => {
+                          const exampleKiht = kategooria.alamkihid.find(k => k.nimi === uniqueNimi);
+                          const baseId = exampleKiht.id.split('-')[0]; 
+                          const isKriging = baseId === 'kriging';
+                          
+                          const layer = {
+                            baseId,
+                            name: uniqueNimi,
+                            isActive: aktiivseKihiDetailid && 
+                                      aktiivseKihiDetailid.linn === kategooria.nimi && 
+                                      aktiivseKihiDetailid.kihiId === baseId
+                          };
+                          
+                          if (isKriging) {
+                            krigingLayers.push(layer);
+                          } else {
+                            statisticLayers.push(layer);
+                          }
+                      });
+                      
+                      return (
+                        <>
+                          {/* esmalt kriging kihid */}
+                          {krigingLayers.length > 0 && (
+                            <div className="mb-2">
+                              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Kriging</div>
+                              {krigingLayers.map(layer => (
+                                <button 
+                                  key={layer.baseId} 
+                                  onClick={() => haldaKihiValikut(kategooria.nimi, layer.baseId, aktiivseKihiDetailid?.stiil || 'sinine')}
+                                  className={`w-full text-left py-1.5 px-2 text-sm rounded-md transition-colors mb-1 last:mb-0 
+                                            ${layer.isActive 
+                                              ? 'bg-blue-500 text-white font-semibold' 
+                                              : 'text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                  {layer.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {statisticLayers.length > 0 && (
+                            <div className="mb-2">
+                              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Statistika</div>
+                              {statisticLayers.map(layer => (
+                                <button 
+                                  key={layer.baseId} 
+                                  onClick={() => haldaKihiValikut(kategooria.nimi, layer.baseId, aktiivseKihiDetailid?.stiil || 'sinine')}
+                                  className={`w-full text-left py-1.5 px-2 text-sm rounded-md transition-colors mb-1 last:mb-0 
+                                            ${layer.isActive 
+                                              ? 'bg-blue-500 text-white font-semibold' 
+                                              : 'text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                  {layer.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
             )
           })}
-        </div>
-        
-        {/* Legend */}
-        {aktiivseKihiDetailid && (
+          </div>
+          </div>
+          
+          {/* Legend */}
+          {aktiivseKihiDetailid && (
             <div className="absolute bottom-4 right-4 z-10">
               {legendNähtav ? (
                 <div className="bg-white bg-opacity-90 p-3 rounded-lg shadow-lg max-w-xs border border-gray-200">
@@ -441,16 +1112,16 @@ const Kaart = () => {
                     </button>
                   </div>
                   <div className="text-xs text-gray-700">
-                      {hinnaVahemikud.map((item, index) => (
-                          <div key={index} className="flex items-center mb-1">
-                              <span 
-                                  className="w-4 h-4 inline-block mr-2 border"
-                                  style={{ backgroundColor: legendiVärvid[index], borderColor: item.piirjoon }}
-                              ></span>
-                              <span>{item.tekst}</span>
-                          </div>
-                      ))}
-                      <p className="mt-2 text-gray-600 italic text-[11px]">Keskmine m² hind piirkonniti</p>
+                    {legendiInfo.vahemikud.map((item, index) => (
+                      <div key={index} className="flex items-center mb-1">
+                        <span 
+                          className="w-4 h-4 inline-block mr-2 border"
+                          style={{ backgroundColor: legendiInfo.värvid[index], borderColor: item.piirjoon }}
+                        ></span>
+                        <span>{item.tekst}</span>
+                      </div>
+                    ))}
+                    <p className="mt-2 text-gray-600 italic text-[11px]">{legendiInfo.kirjeldus}</p>
                   </div>
                 </div>
               ) : (
@@ -463,8 +1134,7 @@ const Kaart = () => {
                 </button>
               )}
             </div>
-        )}
-
+          )}
         </div>
       </div>
     </div>
