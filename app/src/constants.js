@@ -7,7 +7,6 @@ export const NAV_ELEMENDID = [
 ];
 
 export const MUUD_ELEMENDID = [
-  { nimi: 'Info', ikoon: <HelpCircle size={20} />, leht: 'info' }, 
 ];
 
 export const KINNISVARA_TÜÜBID = [

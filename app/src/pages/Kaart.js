@@ -945,6 +945,11 @@ const Kaart = () => {
     <div className="relative h-full flex flex-col">
       <div className="flex-grow p-4 pl-6 pr-6 pt-2 pb-2">
         <div ref={kaardiKonteinerRef} className="w-full h-full rounded-lg shadow-md overflow-hidden relative">
+          {!mapLayersLoaded && (
+            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="text-white text-lg font-semibold">Laen...</div>
+            </div>
+          )}
           <div className="absolute bottom-4 left-4 z-10">
             <button 
               ref={kihiLülitiNuppRef}

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import Kylgriba from './components/Kylgriba';
 import Kaart from './pages/Kaart'; 
 import Mudel from './pages/Mudel'; 
-import Info from './pages/Info'; 
 import { Menu } from 'lucide-react';
 
 export default function App() {
@@ -17,8 +16,6 @@ export default function App() {
         return <Kaart />;
       case 'ennustus':
         return <Mudel />;
-      case 'info':
-        return <Info />;
       default:
         return <Kaart />; 
     }
