@@ -271,11 +271,10 @@ const Mudel = () => {
         const basePath = process.env.PUBLIC_URL;
         console.log('Laadin tegelikku XGBoost mudelit...');
         
-        // Laeb mudeli JSON faili
         const modelResponse = await fetch(`${basePath}/mudel/xgb_rf_ridge/model.json`);
         const modelData = await modelResponse.json();
         
-        // Laeb feature nimesid CSV failist
+        
         const featuresResponse = await fetch(`${basePath}/mudel/xgb_rf_ridge/enhanced_feature_importance.csv`);
         const csvText = await featuresResponse.text();
         const lines = csvText.split('\n').slice(1);
