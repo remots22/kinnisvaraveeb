@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, DollarSign, HelpCircle } from 'lucide-react';
+import { MapPin, DollarSign, Info } from 'lucide-react';
 
 export const NAV_ELEMENDID = [
   { nimi: 'Kaart', ikoon: <MapPin size={20} />, leht: 'kaart' },
@@ -7,6 +7,7 @@ export const NAV_ELEMENDID = [
 ];
 
 export const MUUD_ELEMENDID = [
+  { nimi: 'Info', ikoon: <Info size={20} />, leht: 'info' },
 ];
 
 export const KINNISVARA_TÜÜBID = [

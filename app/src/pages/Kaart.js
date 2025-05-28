@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { ChevronDown, Layers, X } from 'lucide-react'; 
+import { ChevronDown, Layers, X, Eye, EyeOff } from 'lucide-react'; 
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
@@ -152,6 +152,11 @@ const Kaart = () => {
   const [aktiivseKihiDetailid, setAktiivseKihiDetailid] = useState({ linn: 'Eesti', kihiId: 'kriging', stiil: 'magma' }); 
   const [legendNähtav, setLegendNähtav] = useState(true); 
   const [mapLayersLoaded, setMapLayersLoaded] = useState(false);
+  const [parkideKihidNähtav, setParkideKihidNähtav] = useState({
+    Tallinn: false,
+    Tartu: false,
+    Pärnu: false
+  });
 
   const linnad = useMemo(() => [
     { nimi: 'Eesti', koordinaadid: [25.0, 58.5], suum: 6.5 },
@@ -174,6 +179,9 @@ const Kaart = () => {
   const PARNU_ASTAT_ALLIKA_ID = 'parnu-astat-allikas';
   const EESTI_GEOJSON_RADA = `${process.env.PUBLIC_URL}/geoinfo/QGIS/Eesti/eesti500_100_res2000.geojson`;
   const EESTI_ALLIKA_ID = 'eesti-hind-allikas';
+  const TALLINN_PARGID_RADA = `${process.env.PUBLIC_URL}/geoinfo/tallinnpargid.geojson`;
+  const TARTU_PARGID_RADA = `${process.env.PUBLIC_URL}/geoinfo/tartupargid.geojson`;
+  const PARNU_PARGID_RADA = `${process.env.PUBLIC_URL}/geoinfo/parnupargid.geojson`;
 
   const hinnakategooriad = useMemo(() => [
     {
@@ -610,25 +618,28 @@ const Kaart = () => {
   };
 
   const haldaKihiValikut = (linnaNimi, kihiId, kihiStiil = null) => {
-    console.log('[Kaart.js] haldaKihiValikut kutsutud:', { linnaNimi, kihiId, kihiStiil });
     const praeguneLinnDetailides = aktiivseKihiDetailid?.linn === linnaNimi;
     const praeguneKihiIdDetailides = aktiivseKihiDetailid?.kihiId === kihiId;
     
     let uuedDetailid;
     if (praeguneLinnDetailides && praeguneKihiIdDetailides) {
       uuedDetailid = null; // tühistab valiku
-      console.log('[Kaart.js] haldaKihiValikut: Valik tühistatud.');
     } else {
       uuedDetailid = { linn: linnaNimi, kihiId: kihiId, stiil: kihiStiil || 'sinine' };
-      console.log('[Kaart.js] haldaKihiValikut: Uued aktiivse kihi detailid:', uuedDetailid);
     }
     setAktiivseKihiDetailid(uuedDetailid);
+  };
+
+  const lülitaParkideKiht = (linnaNimi) => {
+    setParkideKihidNähtav(prev => ({
+      ...prev,
+      [linnaNimi]: !prev[linnaNimi]
+    }));
   };
   
   useEffect(() => {
     if (kaardiRef.current || !kaardiKonteinerRef.current) return; 
     if (!mapboxgl.accessToken || mapboxgl.accessToken === 'YOUR_MAPBOX_ACCESS_TOKEN') {
-      console.warn('Mapbox Access Token is not set.');
       if (kaardiKonteinerRef.current) {
         kaardiKonteinerRef.current.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100%; font-size: 1.2em; color: red;">Mapboxi ligipääsutõend puudub. Kaarti ei saa kuvada.</div>';
       }
@@ -700,6 +711,33 @@ const Kaart = () => {
         }
       });
 
+      const parkideAndmed = [
+        { linn: 'Tallinn', rada: TALLINN_PARGID_RADA, allikaId: 'tallinn-pargid-allikas', kihiId: 'tallinn-pargid' },
+        { linn: 'Tartu', rada: TARTU_PARGID_RADA, allikaId: 'tartu-pargid-allikas', kihiId: 'tartu-pargid' },
+        { linn: 'Pärnu', rada: PARNU_PARGID_RADA, allikaId: 'parnu-pargid-allikas', kihiId: 'parnu-pargid' }
+      ];
+
+      parkideAndmed.forEach(park => {
+        kaardiRef.current.addSource(park.allikaId, {
+          type: 'geojson',
+          data: park.rada
+        });
+
+        kaardiRef.current.addLayer({
+          id: park.kihiId,
+          type: 'fill',
+          source: park.allikaId,
+          paint: {
+            'fill-color': '#2463eb',
+            'fill-opacity': 0.6,
+            'fill-outline-color': '#1d4ed8'
+          },
+          layout: {
+            visibility: 'none'
+          }
+        });
+      });
+
       // see tegeleb GeoJSON kihtidega tooltip poupupi jaoks - siin hetkel mingisugune jama 
       const geoJsonKihiIdd = [];
       hinnakategooriad.forEach(kategooria => {
@@ -712,7 +750,6 @@ const Kaart = () => {
               });
           }
       });
-      console.log("GeoJSON kihtide ID-d kohtspikrite jaoks:", geoJsonKihiIdd);
 
 
       // NB! see tegeleb hiire liikumisega & tooltip popupiga - siin jama kus tooltip tekib hiirest liiga kaugele yles
@@ -770,12 +807,10 @@ const Kaart = () => {
       
       kaardiRef.current.once('idle', () => {
         setMapLayersLoaded(true);
-        console.log("[Kaart.js] Map 'idle' event fired, map fully ready.");
       });
     });
 
-    kaardiRef.current.on('error', (e) => {
-      console.error('[Kaart.js] Mapbox error:', e);
+    kaardiRef.current.on('error', () => {
     });
 
     return () => {
@@ -790,16 +825,9 @@ const Kaart = () => {
   // see uuendab aktiivset kihti
   useEffect(() => {
     if (!kaardiRef.current || !kaardiRef.current.isStyleLoaded() || !mapLayersLoaded) {
-      console.log("[Kaart.js] Aktiivse kihi uuendamine ootel: kaart/kihid pole valmis või aktiivset kihti pole määratud.", { 
-        mapReady: !!kaardiRef.current, 
-        styleLoaded: kaardiRef.current ? kaardiRef.current.isStyleLoaded() : false, 
-        mapLayersLoaded, 
-        aktiivseKihiDetailid 
-      });
       return;
     }
 
-    console.log("[Kaart.js] Aktiivse kihi detailid muutusid, uuendan kaarti:", aktiivseKihiDetailid);
     hinnakategooriad.forEach(kategooria => {
       if (kategooria.alamkihid) { 
         kategooria.alamkihid.forEach(kiht => {
@@ -818,13 +846,10 @@ const Kaart = () => {
             const praeguneNähtavus = kaardiRef.current.getLayoutProperty(täisKihiId, 'visibility');
             if (peaksOlemaNähtav && praeguneNähtavus !== 'visible') {
               kaardiRef.current.setLayoutProperty(täisKihiId, 'visibility', 'visible');
-              console.log(`[Kaart.js] Kihi ${täisKihiId} nähtavus seatud: NÄHTAV`);
             } else if (!peaksOlemaNähtav && praeguneNähtavus !== 'none') {
               kaardiRef.current.setLayoutProperty(täisKihiId, 'visibility', 'none');
-              console.log(`[Kaart.js] Kihi ${täisKihiId} nähtavus: PEIDETUD`);
             }
           } else {
-            console.warn(`[Kaart.js] Kihti ${täisKihiId} ei leitud kaardilt.`);
           }
         });
       }
@@ -834,20 +859,16 @@ const Kaart = () => {
     if (aktiivseKihiDetailid && aktiivseKihiDetailid.linn) {
       const aktiivneLinnObjekt = linnad.find(l => l.nimi === aktiivseKihiDetailid.linn);
       if (aktiivneLinnObjekt) {
-        console.log(`[Kaart.js] Lennatakse linna: ${aktiivneLinnObjekt.nimi}`, aktiivneLinnObjekt);
         kaardiRef.current.flyTo({
           center: aktiivneLinnObjekt.koordinaadid,
           zoom: aktiivneLinnObjekt.suum,
           duration: 1000 
         });
       } else {
-        console.warn(`[Kaart.js] Aktiivset linna objekti ${aktiivseKihiDetailid.linn} ei leitud 'linnad' massiivist.`);
       }
     } else {
-      console.log('[Kaart.js] Aktiivseid kihi detaile pole (või linn puudub), et lennata linna.');
       const eestiVaade = linnad.find(l => l.nimi === 'Eesti');
       if (eestiVaade && kaardiRef.current && kaardiRef.current.isStyleLoaded()) {
-         console.log('[Kaart.js] Aktiivne kiht tühistatud, lennatakse Eesti üldvaatesse.');
          kaardiRef.current.flyTo({
            center: eestiVaade.koordinaadid,
            zoom: eestiVaade.suum,
@@ -857,6 +878,54 @@ const Kaart = () => {
     }
 
   }, [aktiivseKihiDetailid, mapLayersLoaded, hinnakategooriad, linnad]); 
+
+  useEffect(() => {
+    if (!kaardiRef.current || !kaardiRef.current.isStyleLoaded() || !mapLayersLoaded) {
+      return;
+    }
+
+    const parkideKihid = [
+      { linn: 'Tallinn', kihiId: 'tallinn-pargid' },
+      { linn: 'Tartu', kihiId: 'tartu-pargid' },
+      { linn: 'Pärnu', kihiId: 'parnu-pargid' }
+    ];
+
+    parkideKihid.forEach(park => {
+      const peaksOlemaNähtav = parkideKihidNähtav[park.linn];
+      
+      if (kaardiRef.current.getLayer(park.kihiId)) {
+        const praeguneNähtavus = kaardiRef.current.getLayoutProperty(park.kihiId, 'visibility');
+        if (peaksOlemaNähtav && praeguneNähtavus !== 'visible') {
+          kaardiRef.current.setLayoutProperty(park.kihiId, 'visibility', 'visible');
+        } else if (!peaksOlemaNähtav && praeguneNähtavus !== 'none') {
+          kaardiRef.current.setLayoutProperty(park.kihiId, 'visibility', 'none');
+        }
+      }
+    });
+  }, [parkideKihidNähtav, mapLayersLoaded]);
+
+  // kui keegi seda loeb tunnen kaasa
+  useEffect(() => {
+    if (aktiivseKihiDetailid) {
+      const currentCity = aktiivseKihiDetailid.linn;
+      
+      setParkideKihidNähtav(prev => {
+        const shouldHideAll = Object.keys(prev).some(city => 
+          city !== currentCity && prev[city] === true
+        );
+        
+        if (shouldHideAll) {
+          return {
+            Tallinn: false,
+            Tartu: false,
+            Pärnu: false
+          };
+        }
+        
+        return prev;
+      });
+    }
+  }, [aktiivseKihiDetailid]);
 
   // Kihimenüü sulgemine klikkides välja
   useEffect(() => {
@@ -1015,7 +1084,6 @@ const Kaart = () => {
           <div className="p-4 pt-2 overflow-y-auto flex-grow">
           
           {hinnakategooriad.map(kategooria => {
-            console.log('[Kaart.js] Rendering category in Kihtide valik:', kategooria.nimi); 
             return kategooria.alamkihid && (
               <div key={kategooria.nimi} className="mb-2 last:mb-0">
                 <button 
@@ -1088,6 +1156,26 @@ const Kaart = () => {
                                   {layer.name}
                                 </button>
                               ))}
+                            </div>
+                          )}
+                          
+                          {kategooria.nimi !== 'Eesti' && (
+                            <div className="mb-2">
+                              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Muud kihid</div>
+                              <div className="flex items-center justify-between py-1.5 px-2 text-sm rounded-md hover:bg-gray-50 transition-colors">
+                                <span className="text-gray-600">Pargid</span>
+                                <button
+                                  onClick={() => lülitaParkideKiht(kategooria.nimi)}
+                                  className={`p-1 rounded-md transition-colors ${
+                                    parkideKihidNähtav[kategooria.nimi] 
+                                      ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                  }`}
+                                  title={`${parkideKihidNähtav[kategooria.nimi] ? 'Peida' : 'Näita'} ${kategooria.nimi} pargid`}
+                                >
+                                  {parkideKihidNähtav[kategooria.nimi] ? <Eye size={14} /> : <EyeOff size={14} />}
+                                </button>
+                              </div>
                             </div>
                           )}
                         </>

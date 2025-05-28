@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { PillSelector, Valikuriba, KaartKomponent, JaotisePealkiri } from '../components/UIComponents';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { PillSelector, Valikuriba } from '../components/UIComponents';
 import { KINNISVARA_TÜÜBID } from '../constants';
 import './Mudel.css';
 const MAPBOX_ACCESS_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -7,7 +7,7 @@ const MAPBOX_ACCESS_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 const Mudel = () => {
   const [kinnisvaraTüüp, setKinnisvaraTüüp] = useState(KINNISVARA_TÜÜBID[0].name);
   const [ehitusaasta, setEhitusaasta] = useState('');
-  const [energiaklass, setEnergiaklass] = useState('A');
+  const [energiaklass, setEnergiaklass] = useState('D');
   const [pindala, setPindala] = useState('');
   const [tubadeArv, setTubadeArv] = useState(1);
   const [rõduTerrass, setRõduTerrass] = useState('Ei');
@@ -26,18 +26,14 @@ const Mudel = () => {
   const [valitudAadress, setValitudAadress] = useState(null);
   const [koordinaadid, setKoordinaadid] = useState(null); // siin hoitakse koordinaate
   const [laebSoovitusi, setLaebSoovitusi] = useState(false);
+  const isSelectingAddress = useRef(false);
 
   const energiaklassiValikud = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
   const seisukorraValikud = ['Uus', 'Heas korras', 'Keskmises seisukorras', 'Vajab remonti'];
-  const materjalValikud = ['Paneel', 'Kivi', 'Puit', 'Betoon'];
+  const materjalValikud = ['Paneel', 'Kivi', 'Puit'];
 
-  // muundab wgs84 koordinaadid L-EST97 formaati
-  const convertWGS84ToEPSG3301 = (longitude, latitude) => {
-    
-    const lat0 = 58.0;  // eesti keskmine
-    const lon0 = 24.0; 
-    
-    const a = 6378137.0;    //eesti keskmine
+  const convertWGS84ToEPSG3301Core = (longitude, latitude) => {
+    const a = 6378137.0;    
     const f = 1/298.257223563;
     const e2 = 2*f - f*f;
     
@@ -48,7 +44,6 @@ const Mudel = () => {
     
     const lat_rad = latitude * Math.PI / 180;
     const lon_rad = longitude * Math.PI / 180;
-    const m = Math.cos(lat_rad) / Math.sqrt(1 - e2 * Math.sin(lat_rad) * Math.sin(lat_rad));
     const t = Math.tan(Math.PI/4 - lat_rad/2) / 
               Math.pow((1 - Math.sqrt(e2) * Math.sin(lat_rad)) / 
                        (1 + Math.sqrt(e2) * Math.sin(lat_rad)), Math.sqrt(e2)/2);
@@ -72,6 +67,14 @@ const Mudel = () => {
     return { x: Math.round(x), y: Math.round(y) };
   };
 
+  // muundab wgs84 koordinaadid L-EST97 formaati 
+  const convertWGS84ToEPSG3301 = (longitude, latitude) => {
+    const result = convertWGS84ToEPSG3301Core(longitude, latitude);
+    return result;
+  };
+
+  const convertWGS84ToEPSG3301Silent = convertWGS84ToEPSG3301Core;
+
   // seee kontrollib kas on tallinnas/tartus/parnus (hiljem)
   const isPointInPolygon = (point, polygon) => {
     const [x, y] = point;
@@ -89,52 +92,119 @@ const Mudel = () => {
     return inside;
   };
 
-  // see otsib milline linn ja keskpunkt
-  const determineCityFromCoords = async (coords) => {
-    console.log('Kontrollin koordinaate:', coords.longitude, coords.latitude);
-    
+  // see otsib milline linn, keskpunkt ja asum
+  const determineCityAndDistrictFromCoords = async (coords) => {
     const basePath = process.env.PUBLIC_URL;
     const cityFiles = [
-      { name: "Tallinn", file: `${basePath}/mudel/tallinn3.geojson`, center: [542286.66, 6589078.51] },
-      { name: "Tartu", file: `${basePath}/mudel/tartu3.geojson`, center: [659225.97, 6474307.31] },
-      { name: "Pärnu", file: `${basePath}/mudel/parnu3.geojson`, center: [529321.62, 6471686.43] }
+      { 
+        name: "Tallinn", 
+        file: `${basePath}/mudel/tallinn3.geojson`, 
+        center: [542286.66, 6589078.51],
+        districtFile: `${basePath}/geoinfo/tln_asumid.geojson` 
+      },
+      { 
+        name: "Tartu", 
+        file: `${basePath}/mudel/tartu3.geojson`, 
+        center: [659081.55, 6474284.18],
+        districtFile: `${basePath}/geoinfo/trt_asumid.geojson` 
+      },
+      { 
+        name: "Pärnu", 
+        file: `${basePath}/mudel/parnu3.geojson`, 
+        center: [529128.72, 6471834.74],
+        districtFile: `${basePath}/geoinfo/prn_asumid.geojson` 
+      }
     ];
     
     for (const city of cityFiles) {
       try {
         const response = await fetch(city.file);
         if (!response.ok) {
-          console.error(`Ei õnnestunud laadida ${city.file}: ${response.status} ${response.statusText}`);
           continue;
         }
         const geojson = await response.json();
         
+        // kumb koordinaadisusteem
+        if (geojson.features.length > 0 && geojson.features[0].geometry.coordinates) {
+          const firstCoord = geojson.features[0].geometry.type === 'Polygon' 
+            ? geojson.features[0].geometry.coordinates[0][0]
+            : geojson.features[0].geometry.coordinates[0][0][0];
+        }
+        
         // kontrollib iga feature labi
+        let cityFound = false;
+
+        const pointToCheck = [coords.longitude, coords.latitude]; //wgs84
+      
         for (const feature of geojson.features) {
           if (feature.geometry.type === 'Polygon') {
             const coordinates = feature.geometry.coordinates[0]; 
-            if (isPointInPolygon([coords.longitude, coords.latitude], coordinates)) {
-              console.log(`Punkt leitud linnas ${city.name}`);
-              return { 
-                name: city.name, 
-                center: city.center 
-              };
+            if (isPointInPolygon(pointToCheck, coordinates)) {
+              cityFound = true;
+              break;
             }
           } else if (feature.geometry.type === 'MultiPolygon') {
             for (const polygon of feature.geometry.coordinates) {
               const coordinates = polygon[0];
-              if (isPointInPolygon([coords.longitude, coords.latitude], coordinates)) {
-                console.log(`Punkt leitud linnas ${city.name}`);
-                return { 
-                  name: city.name, 
-                  center: city.center 
-                };
+              if (isPointInPolygon(pointToCheck, coordinates)) {
+                cityFound = true;
+                break;
               }
             }
+            if (cityFound) break;
           }
         }
+        
+        // hinnatsoonide leftover - vb peaks ara votma
+        if (!cityFound && city.name === 'Tallinn' && coords.longitude > 24.5 && coords.longitude < 25.0 && coords.latitude > 59.3 && coords.latitude < 59.6) {
+          cityFound = true;
+        } else if (!cityFound && city.name === 'Tartu' && coords.longitude > 26.6 && coords.longitude < 26.8 && coords.latitude > 58.3 && coords.latitude < 58.45) {
+          cityFound = true;
+        } else if (!cityFound && city.name === 'Pärnu' && coords.longitude > 24.4 && coords.longitude < 24.6 && coords.latitude > 58.3 && coords.latitude < 58.45) {
+          cityFound = true;
+        }
+        
+        if (cityFound) {
+          // nüüd otsib asumi
+          let district = null;
+          try {
+            const districtResponse = await fetch(city.districtFile);
+            if (districtResponse.ok) {
+              const districtGeojson = await districtResponse.json();
+              
+              for (const feature of districtGeojson.features) {
+                if (feature.geometry.type === 'Polygon') {
+                  const coordinates = feature.geometry.coordinates[0];
+                  if (isPointInPolygon(pointToCheck, coordinates)) {
+                    district = feature.properties.asumi_nimi || feature.properties.NIMI || feature.properties.nimi || feature.properties.name;
+                    break;
+                  }
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                  for (const polygon of feature.geometry.coordinates) {
+                    const coordinates = polygon[0];
+                    if (isPointInPolygon(pointToCheck, coordinates)) {
+                      district = feature.properties.asumi_nimi || feature.properties.NIMI || feature.properties.nimi || feature.properties.name;
+                      break;
+                    }
+                  }
+                  if (district) break;
+                }
+              }
+              if (!district) {
+              }
+            }
+          } catch (error) {
+          }
+          
+          const result = { 
+            name: city.name, 
+            center: city.center,
+            district: district
+          };
+          return result;
+        } else {
+        }
       } catch (error) {
-        console.warn(`Could not load ${city.name} boundaries:`, error);
       }
     }
     
@@ -153,12 +223,20 @@ const Mudel = () => {
     const counts = { kohvikud_500m: 0, restod_500m: 0, poed_500m: 0 };
     const radius = 500;
 
+    // cache -kas tootab?
+    const coordCache = new Map();
+
     for (const amenity of amenityFiles) {
       try {
         const response = await fetch(amenity.file);
-        if (!response.ok) continue;
+        if (!response.ok) {
+          continue;
+        }
         
         const geojson = await response.json();
+        
+        let nearbyCount = 0;
+        let conversions = 0;
         
         for (const feature of geojson.features) {
           let amenityCoords;
@@ -178,7 +256,18 @@ const Mudel = () => {
             continue;
           }
 
-          const amenityEpsg3301 = convertWGS84ToEPSG3301(amenityCoords[0], amenityCoords[1]);
+
+          const cacheKey = `${amenityCoords[0]},${amenityCoords[1]}`;
+          let amenityEpsg3301;
+          
+          if (coordCache.has(cacheKey)) {
+            amenityEpsg3301 = coordCache.get(cacheKey);
+          } else {
+            amenityEpsg3301 = convertWGS84ToEPSG3301Silent(amenityCoords[0], amenityCoords[1]);
+            coordCache.set(cacheKey, amenityEpsg3301);
+            conversions++;
+          }
+          
           const distance = Math.sqrt(
             Math.pow(coords.x - amenityEpsg3301.x, 2) + 
             Math.pow(coords.y - amenityEpsg3301.y, 2)
@@ -186,21 +275,129 @@ const Mudel = () => {
 
           if (distance <= radius) {
             counts[`${amenity.type}_500m`]++;
+            nearbyCount++;
           }
         }
       } catch (error) {
-        console.warn(`Could not load ${amenity.type} data:`, error);
       }
     }
 
-    console.log('Lähedased teenused:', counts);
     return counts;
+  };
+
+  // see otsib kas miljooalade lahedal - tuleb kontrollida kas kui nt on 100 on ka 250 ja 500m - ei tohiks olla
+  const calculateMiljooalaProximity = async (epsg3301Coords, cityName) => {
+    const result = {
+      is_miljooala: 0,
+      near_miljooala_100m: 0,
+      near_miljooala_250m: 0,
+      near_miljooala_500m: 0
+    };
+
+    // miljooalade rest
+    const miljooalaServices = {
+      'Tallinn': {
+        url: 'https://gis.tallinn.ee/arcgis/rest/services/milj88alad/MapServer/3/query',
+        where: "tyyp_id=2" // kehtiv miljooala tln
+      },
+      'Tartu': {
+        url: 'https://gis.tartulv.ee/arcgis/rest/services/Planeeringud/Miljöö/MapServer/13/query',
+        where: "1=1" 
+      },
+      'Pärnu': {
+        url: 'https://services3.arcgis.com/FwX2qF9JecNSRnwr/ArcGIS/rest/services/kehtiv_miljööväärtuslik_ala/FeatureServer/0/query',
+        where: "1=1" 
+      }
+    };
+
+    const service = miljooalaServices[cityName];
+    
+    if (!service) {
+      return result;
+    }
+
+    try {
+      const params = new URLSearchParams({
+        where: service.where,
+        geometry: JSON.stringify({
+          x: epsg3301Coords.x,
+          y: epsg3301Coords.y,
+          spatialReference: { wkid: 3301 }
+        }),
+        geometryType: 'esriGeometryPoint',
+        spatialRel: 'esriSpatialRelIntersects',
+        returnGeometry: 'false',
+        returnCountOnly: 'true',
+        f: 'json'
+      });
+
+      const insideResponse = await fetch(`${service.url}?${params.toString()}`);
+      const insideData = await insideResponse.json();
+      
+      if (insideData.count > 0) {
+        result.is_miljooala = 1;
+        return result;
+      }
+
+      // buffers seesama 100m 250m 500m
+      const buffers = [100, 250, 500]; // meters
+      
+      for (const buffer of buffers) {
+        const bufferParams = new URLSearchParams({
+          where: service.where,
+          geometry: JSON.stringify({
+            x: epsg3301Coords.x,
+            y: epsg3301Coords.y,
+            spatialReference: { wkid: 3301 }
+          }),
+          geometryType: 'esriGeometryPoint',
+          spatialRel: 'esriSpatialRelIntersects',
+          distance: buffer,
+          units: 'esriSRUnit_Meter',
+          returnGeometry: 'false',
+          returnCountOnly: 'true',
+          f: 'json'
+        });
+
+        const bufferResponse = await fetch(`${service.url}?${bufferParams.toString()}`);
+        const bufferData = await bufferResponse.json();
+        
+        if (bufferData.count > 0) {
+          if (buffer === 100) result.near_miljooala_100m = 1;
+          if (buffer === 250) result.near_miljooala_250m = 1;
+          if (buffer === 500) result.near_miljooala_500m = 1;
+        }
+      }
+
+    } catch (error) {
+    }
+
+    return result;
+  };
+
+
+  const getArchitecturalEra = (year) => {
+    if (year < 1562) return '1000-1561';
+    if (year < 1710) return '1562-1710';
+    if (year < 1880) return '1710-1879';
+    if (year < 1920) return '1880–1919';
+    if (year < 1945) return '1920–1944';
+    if (year < 1958) return '1945–1957';
+    if (year < 1973) return '1958–1972';
+    if (year < 1992) return '1973–1991';
+    if (year < 2001) return '1991-2000';
+    if (year < 2005) return '2001-2004';
+    if (year < 2009) return '2005-2008';
+    if (year < 2015) return '2009-2014';
+    if (year < 2021) return '2015-2020';
+    if (year < 2026) return '2021-2025';
+    return '2025+';
   };
 
   const calculateModelFeatures = async (inputData) => {
     const { ehitusaasta, pindala, tubadeArv, koordinaadid, kinnisvaraTüüp, krundiPind, suurRõdu } = inputData;
     const currentYear = new Date().getFullYear();
-    const vanus = ehitusaasta ? currentYear - parseInt(ehitusaasta) : 30;
+    const vanus = currentYear - parseInt(ehitusaasta);
     
     const epsg3301Coords = convertWGS84ToEPSG3301(koordinaadid.longitude, koordinaadid.latitude);
     
@@ -210,7 +407,7 @@ const Mudel = () => {
       x: epsg3301Coords.x,
       y: epsg3301Coords.y
     };
-    const cityInfo = await determineCityFromCoords(coordsForCheck);
+    const cityInfo = await determineCityAndDistrictFromCoords(coordsForCheck);
     
     if (!cityInfo) {
       throw new Error(`Valitud asukoht pole Tallinnas, Tartus ega Pärnus. Mudel toetab ainult neid kolme linna. Koordinaadid: ${epsg3301Coords.x}, ${epsg3301Coords.y}`);
@@ -218,12 +415,14 @@ const Mudel = () => {
     
     const [centerX, centerY] = cityInfo.center;
     const cityName = cityInfo.name;
+    const district = cityInfo.district;
     
     const distance_from_center = Math.sqrt(Math.pow(epsg3301Coords.x - centerX, 2) + Math.pow(epsg3301Coords.y - centerY, 2));
-    console.log(`Kauguse arvutus: Punkt (${epsg3301Coords.x}, ${epsg3301Coords.y}) kuni keskus (${centerX}, ${centerY}) = ${distance_from_center.toFixed(0)}m`);
     
     const amenities = await calculateNearbyAmenities(epsg3301Coords);
     
+    // miljooalade laheduse arvutamine
+    const miljooala = await calculateMiljooalaProximity(epsg3301Coords, cityName);
 
     const area_per_room = pindala ? parseFloat(pindala) / tubadeArv : 25;
     const floor_ratio = korrus && korruseid ? parseFloat(korrus) / parseFloat(korruseid) : 0.5;
@@ -231,8 +430,11 @@ const Mudel = () => {
     const is_top_floor = korrus && korruseid && parseInt(korrus) === parseInt(korruseid);
     const is_middle_floor = !is_ground_floor && !is_top_floor;
     
-    return {
-      ehitusaasta_orig: ehitusaasta ? parseFloat(ehitusaasta) : 1990,
+    const buildYear = parseFloat(ehitusaasta);
+    const architecturalEra = getArchitecturalEra(buildYear);
+    
+    const features = {
+      ehitusaasta_orig: buildYear,
       vanus: vanus,
       pindala_numeric: pindala ? parseFloat(pindala) : 50,
       tube: tubadeArv,
@@ -242,6 +444,7 @@ const Mudel = () => {
       x: epsg3301Coords.x,
       y: epsg3301Coords.y,
       city: cityName,
+      district: district,
       area_per_room: area_per_room,
       floor_ratio: floor_ratio,
       is_ground_floor: is_ground_floor ? 1 : 0,
@@ -256,165 +459,67 @@ const Mudel = () => {
       energiaklass: energiaklass,
       seisukord_kategooria: seisukord,
       materjal_kategooria: materjalKategooria,
-      objekti_tüüp: kinnisvaraTüüp
+      objekti_tüüp: kinnisvaraTüüp,
+      is_miljooala: miljooala.is_miljooala,
+      near_miljooala_100m: miljooala.near_miljooala_100m,
+      near_miljooala_250m: miljooala.near_miljooala_250m,
+      near_miljooala_500m: miljooala.near_miljooala_500m,
+      architectural_era: architecturalEra
     };
-  };
-
-
-  // laeb tegeliku XGBoost mudeli sisse
-  const [xgbModel, setXgbModel] = useState(null);
-  const [featureNames, setFeatureNames] = useState(null);
-
-  useEffect(() => {
-    const loadXGBoostModel = async () => {
-      try {
-        const basePath = process.env.PUBLIC_URL;
-        console.log('Laadin tegelikku XGBoost mudelit...');
-        
-        const modelResponse = await fetch(`${basePath}/mudel/xgb_rf_ridge/model.json`);
-        const modelData = await modelResponse.json();
-        
-        
-        const featuresResponse = await fetch(`${basePath}/mudel/xgb_rf_ridge/enhanced_feature_importance.csv`);
-        const csvText = await featuresResponse.text();
-        const lines = csvText.split('\n').slice(1);
-        const features = [];
-        
-        lines.forEach(line => {
-          if (line.trim()) {
-            const [feature] = line.split(',');
-            features.push(feature.trim());
-          }
-        });
-        
-        setXgbModel(modelData);
-        setFeatureNames(features);
-        console.log('XGBoost mudel laetud, feature count:', features.length);
-        console.log('Mudeli info:', {
-          trees: modelData.learner.gradient_booster.model.gbtree_model_param.num_trees,
-          baseScore: modelData.learner.learner_model_param.base_score
-        });
-      } catch (error) {
-        console.error('Viga XGBoost mudeli laadimisel:', error);
-      }
-    };
-
-    loadXGBoostModel();
-  }, []);
-
-  const predictWithXGBoost = (featureVector, model) => {
-    try {
-      const trees = model.learner.gradient_booster.model.trees;
-      const baseScore = parseFloat(model.learner.learner_model_param.base_score);
-      let prediction = baseScore;
-      
-      // koigi treede predictionid liidetakse
-      for (let treeIndex = 0; treeIndex < trees.length; treeIndex++) {
-        const tree = trees[treeIndex];
-        let nodeIndex = 0;
-        
-        while (tree.left_children[nodeIndex] !== -1) {
-          const splitFeature = tree.split_indices[nodeIndex];
-          const splitValue = tree.split_conditions[nodeIndex];
-          const featureValue = featureVector[splitFeature] || 0;
-          
-          if (featureValue < splitValue) {
-            nodeIndex = tree.left_children[nodeIndex];
-          } else {
-            nodeIndex = tree.right_children[nodeIndex];
-          }
-        }
-        
-        prediction += tree.base_weights[nodeIndex];
-      }
-      
-      return prediction;
-    } catch (error) {
-      console.error('Viga XGBoost ennustuses:', error);
-      throw error;
-    }
-  };
-
-  // vaja leida
-  const transformToFeatureVector = (features) => {
-    if (!featureNames) {
-      throw new Error('Feature nimed ei ole veel laetud');
-    }
     
-    // tekitab feature vektor 0
-    const featureVector = new Array(featureNames.length).fill(0);
-    const featureMap = {
-      'pindala_numeric': features.pindala_numeric,
-      'tube': features.tube,
-      'korrus': features.korrus,
-      'korruseid': features.korruseid,
-      'vanus': features.vanus,
-      'ehitusaasta_orig': features.ehitusaasta_orig,
-      'distance_from_center': features.distance_from_center,
-      'x': features.x,
-      'y': features.y,
-      'area_per_room': features.area_per_room,
-      'floor_ratio': features.floor_ratio,
-      'is_ground_floor': features.is_ground_floor,
-      'is_top_floor': features.is_top_floor,
-      'is_middle_floor': features.is_middle_floor,
-      'balcony_terrace_presence': features.balcony_terrace_presence,
-      'Suur rõdu või terrass': features['Suur rõdu või terrass'],
-      'krundi_pindala_numeric': features.krundi_pindala_numeric,
-      'kohvikud_500m': features.kohvikud_500m,
-      'restod_500m': features.restod_500m,
-      'poed_500m': features.poed_500m,
-      [`omavalitsus_kategooria_${features.city}`]: 1,
-      [`energiaklass_${features.energiaklass}`]: 1,
-      [`seisukord_kategooria_${features.seisukord_kategooria}`]: 1,
-      [`materjal_kategooria_${features.materjal_kategooria}`]: 1,
-      [`objekti_tüüp_${features.objekti_tüüp}`]: 1,
-      'age_category_Very_New': features.vanus < 5 ? 1 : 0,
-      'age_category_New': features.vanus >= 5 && features.vanus < 15 ? 1 : 0,
-      'age_category_Medium': features.vanus >= 15 && features.vanus < 30 ? 1 : 0,
-      'age_category_Old': features.vanus >= 30 ? 1 : 0
-    };
-    for (const [featureName, value] of Object.entries(featureMap)) {
-      const index = featureNames.indexOf(featureName);
-      if (index !== -1) {
-        featureVector[index] = value;
-      }
-    }
-    
-    return featureVector;
+    return features;
   };
+
+
 
   const predictPrice = async (features) => {
-    if (!xgbModel || !featureNames) {
-      throw new Error('XGBoost mudel ei ole veel laetud');
-    }
+    const API_URL = 'https://remots-kinnisvaram.hf.space/predict';
 
     try {
-      console.log('Kasutan tegelikku XGBoost mudelit ennustamiseks...');
-      const featureVector = transformToFeatureVector(features);
-      const predictedPricePerM2 = Math.round(Math.max(1000, predictWithXGBoost(featureVector, xgbModel)));
-      const area = features.pindala_numeric;
-      const totalPrice = Math.round(predictedPricePerM2 * area / 1000) * 1000;
+      const requestData = {
+        pindala: features.pindala_numeric,
+        tube: features.tube,
+        korrus: parseInt(features.korrus) || 1,
+        korruste_arv: parseInt(features.korruseid) || 5,
+        ehitusaasta: parseInt(features.ehitusaasta_orig),
+        x: features.x,
+        y: features.y,
+        seisukord: features.seisukord_kategooria || 'Heas korras',
+        energiaklass: features.energiaklass || null,
+        ehitusmaterjal: features.materjal_kategooria === 'Paneel' ? 'Paneelmaja' : 
+                        features.materjal_kategooria === 'Kivi' ? 'Kivimaja' : 
+                        features.materjal_kategooria === 'Puit' ? 'Puitmaja' : null,
+        rodu: features.balcony_terrace_presence === 1,
+        suur_rodu: features['Suur rõdu või terrass'] === 1
+      };
       
-      const percentile = Math.min(95, Math.max(5, 
-        predictedPricePerM2 < 2000 ? 25 :
-        predictedPricePerM2 < 2500 ? 40 :
-        predictedPricePerM2 < 3000 ? 60 :
-        predictedPricePerM2 < 4000 ? 80 : 90
-      ));
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
       
-      console.log(`XGBoost ennustus: ${predictedPricePerM2} €/m²`);
-      console.log('Kasutatud features:', Object.keys(features).length);
-
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `API viga: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      const predictedPricePerM2 = Math.round(data.price_per_sqm);
+      const totalPrice = data.total_price;
+      
       return {
         pricePerM2: predictedPricePerM2,
         totalPrice: totalPrice,
-        percentile: percentile,
-        isRealModel: true
+        isRealModel: true,
+        confidenceRange: data.confidence_range,
+        neighborhoodAvg: data.neighborhood_avg
       };
     } catch (error) {
-      console.error('Viga XGBoost ennustuse tegemisel:', error);
-      throw error;
+      throw new Error(`Ennustuse viga: ${error.message}`);
     }
   };
 
@@ -427,10 +532,9 @@ const Mudel = () => {
   };
 
   const fetchAadressSoovitused = async (otsing) => {
-    if (otsing.length < 3 || !MAPBOX_ACCESS_TOKEN) {
+    if (otsing.length < 3 || !MAPBOX_ACCESS_TOKEN || isSelectingAddress.current) {
       setAadressSoovitused([]);
       if (!MAPBOX_ACCESS_TOKEN) {
-        console.warn('mapbox token puudub/muutunud');
       }
       return;
     }
@@ -439,7 +543,7 @@ const Mudel = () => {
       const params = new URLSearchParams({
         access_token: MAPBOX_ACCESS_TOKEN,
         country: 'EE',
-        limit: 5,
+        limit: 10, 
         types: 'address,postcode,locality,neighborhood,place',
         autocomplete: true,
       });
@@ -450,9 +554,25 @@ const Mudel = () => {
         throw new Error(`Mapbox API viga: ${response.statusText} - ${errorData.message || 'Tundmatu viga'}`);
       }
       const data = await response.json();
-      setAadressSoovitused(data.features || []);
+      
+      const supportedCities = ['Tallinn', 'Tartu', 'Pärnu'];
+      const filteredFeatures = (data.features || []).filter(feature => {
+        const placeName = feature.place_name || '';
+
+        return supportedCities.some(city => 
+          placeName.includes(city) || 
+          (feature.context || []).some(ctx => 
+            ctx.text && supportedCities.includes(ctx.text)
+          )
+        );
+      });
+      
+
+      setAadressSoovitused(filteredFeatures.slice(0, 5));
+      
+      if (filteredFeatures.length === 0 && data.features && data.features.length > 0) {
+      }
     } catch (error) {
-      console.error('Viga aadressi soovituste näitamisel:', error);
       setAadressSoovitused([]);
     } finally {
       setLaebSoovitusi(false);
@@ -462,10 +582,13 @@ const Mudel = () => {
   const debouncedFetchAadressSoovitused = useCallback(debounce(fetchAadressSoovitused, 300), []);
 
   useEffect(() => {
-    debouncedFetchAadressSoovitused(aadressOtsing);
+    if (!isSelectingAddress.current) {
+      debouncedFetchAadressSoovitused(aadressOtsing);
+    }
   }, [aadressOtsing, debouncedFetchAadressSoovitused]);
 
   const handleAadressValik = (feature) => {
+    isSelectingAddress.current = true; 
     setValitudAadress(feature);
     setAadressOtsing(feature.place_name);
     setAadressSoovitused([]);
@@ -474,9 +597,13 @@ const Mudel = () => {
       // tagastab koordinaadid
       setKoordinaadid({ longitude: feature.center[0], latitude: feature.center[1] });
     } else {
-       console.warn('Koordinaate ei leitud:', feature);
        setKoordinaadid(null);
     }
+    
+    // sellega prg jama varsti vaja chegoda
+    setTimeout(() => {
+      isSelectingAddress.current = false;
+    }, 100);
   };
 
   const handleTubadeArvMuutus = (muutus) => {
@@ -500,12 +627,6 @@ const Mudel = () => {
       alert('Palun täitke kõik kohustuslikud väljad: aadress, pindala ja ehitusaasta');
       return;
     }
-
-    if (!xgbModel || !featureNames) {
-      alert('XGBoost mudel laadib veel. Palun oodake hetk.');
-      return;
-    }
-
 
     setEnnustusteLaeb(true);
     setEnnustus(null);
@@ -534,7 +655,6 @@ const Mudel = () => {
       setSisendParameetrid(features);
       setEnnustus(prediction);
     } catch (error) {
-      console.error('Viga ennustuse tegemisel:', error);
       alert('Viga ennustuse tegemisel. Palun proovige uuesti.');
     } finally {
       setEnnustusteLaeb(false);
@@ -542,12 +662,11 @@ const Mudel = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 bg-gray-50 min-h-screen mudel-container">
-      <JaotisePealkiri>Ennustusmudeli seadistamine</JaotisePealkiri>
+    <div className="mudel-container p-4 md:p-6 space-y-8">
 
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1">
-          <KaartKomponent className="space-y-4">
+          <div className="mudel-card p-6 space-y-6">
         <PillSelector
           silt="Kinnisvara tüüp"
           valik1={KINNISVARA_TÜÜBID[0].name}
@@ -556,37 +675,43 @@ const Mudel = () => {
           onVali={setKinnisvaraTüüp}
         />
 
-        <div>
-          <label htmlFor="ehitusaasta" className="block text-sm font-medium text-gray-700 mb-1">Ehitusaasta</label>
-          <input
-            type="number"
-            id="ehitusaasta"
-            value={ehitusaasta}
-            onChange={(e) => setEhitusaasta(e.target.value)}
-            placeholder="Nt 2005"
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
+        {kinnisvaraTüüp !== 'Maja' && (
+          <div>
+            <label htmlFor="ehitusaasta" className="block text-sm font-medium text-gray-700 mb-1">Ehitusaasta</label>
+            <input
+              type="number"
+              id="ehitusaasta"
+              value={ehitusaasta}
+              onChange={(e) => setEhitusaasta(e.target.value)}
+              placeholder="Nt 2005"
+              className="input-field w-full"
+            />
+          </div>
+        )}
 
-        <Valikuriba
-          silt="Energiaklass"
-          valikud={energiaklassiValikud}
-          valitudVäärtus={energiaklass}
-          onVali={setEnergiaklass}
-        />
-
-        <div>
-          <label htmlFor="pindala" className="block text-sm font-medium text-gray-700 mb-1">Pindala (m²) *</label>
-          <input
-            type="number"
-            id="pindala"
-            value={pindala}
-            onChange={(e) => setPindala(e.target.value)}
-            placeholder="Nt 75"
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            required
+        {kinnisvaraTüüp !== 'Maja' && (
+          <Valikuriba
+            silt="Energiaklass"
+            valikud={energiaklassiValikud}
+            valitudVäärtus={energiaklass}
+            onVali={setEnergiaklass}
           />
-        </div>
+        )}
+
+        {kinnisvaraTüüp !== 'Maja' && (
+          <div>
+            <label htmlFor="pindala" className="block text-sm font-medium text-gray-700 mb-1">Pindala (m²) *</label>
+            <input
+              type="number"
+              id="pindala"
+              value={pindala}
+              onChange={(e) => setPindala(e.target.value)}
+              placeholder="Nt 75"
+              className="input-field w-full"
+              required
+            />
+          </div>
+        )}
 
         {kinnisvaraTüüp === 'Maja' && (
           <div>
@@ -597,89 +722,99 @@ const Mudel = () => {
               value={krundiPind}
               onChange={(e) => setKrundiPind(e.target.value)}
               placeholder="Nt 800"
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="input-field w-full"
             />
           </div>
         )}
 
-        <Valikuriba
-          silt="Seisukord"
-          valikud={seisukorraValikud}
-          valitudVäärtus={seisukord}
-          onVali={setSeisukord}
-        />
+        {kinnisvaraTüüp !== 'Maja' && (
+          <Valikuriba
+            silt="Seisukord"
+            valikud={seisukorraValikud}
+            valitudVäärtus={seisukord}
+            onVali={setSeisukord}
+          />
+        )}
 
-        <Valikuriba
-          silt="Materjal"
-          valikud={materjalValikud}
-          valitudVäärtus={materjalKategooria}
-          onVali={setMaterjalKategooria}
-        />
+        {kinnisvaraTüüp !== 'Maja' && (
+          <Valikuriba
+            silt="Materjal"
+            valikud={materjalValikud}
+            valitudVäärtus={materjalKategooria}
+            onVali={setMaterjalKategooria}
+          />
+        )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="korrus" className="block text-sm font-medium text-gray-700 mb-1">Korrus</label>
-            <input
-              type="number"
-              id="korrus"
-              value={korrus}
-              onChange={(e) => setKorrus(e.target.value)}
-              placeholder="Nt 3"
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
+        {kinnisvaraTüüp !== 'Maja' && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="korrus" className="block text-sm font-medium text-gray-700 mb-1">Korrus</label>
+              <input
+                type="number"
+                id="korrus"
+                value={korrus}
+                onChange={(e) => setKorrus(e.target.value)}
+                placeholder="Nt 3"
+                className="input-field w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="korruseid" className="block text-sm font-medium text-gray-700 mb-1">Korruseid kokku</label>
+              <input
+                type="number"
+                id="korruseid"
+                value={korruseid}
+                onChange={(e) => setKorruseid(e.target.value)}
+                placeholder="Nt 5"
+                className="input-field w-full"
+              />
+            </div>
           </div>
-          <div>
-            <label htmlFor="korruseid" className="block text-sm font-medium text-gray-700 mb-1">Korruseid kokku</label>
-            <input
-              type="number"
-              id="korruseid"
-              value={korruseid}
-              onChange={(e) => setKorruseid(e.target.value)}
-              placeholder="Nt 5"
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
+        )}
         
-        <div>
-          <label htmlFor="tubadeArv" className="block text-sm font-medium text-gray-700 mb-1">Tubade arv</label>
-          <div className="flex items-center space-x-2">
-            <button 
-              type="button" 
-              onClick={() => handleTubadeArvMuutus(-1)} 
-              className="px-3 py-1.5 border border-gray-300 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none"
-            >
-              -
-            </button>
-            <input
-              type="number"
-              id="tubadeArv"
-              value={tubadeArv}
-              onChange={handleTubadeArvSisestus}
-              min="1"
-              className="w-16 text-center p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-            <button 
-              type="button" 
-              onClick={() => handleTubadeArvMuutus(1)} 
-              className="px-3 py-1.5 border border-gray-300 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none"
-            >
-              +
-            </button>
+        {kinnisvaraTüüp !== 'Maja' && (
+          <div>
+            <label htmlFor="tubadeArv" className="block text-sm font-medium text-gray-700 mb-1">Tubade arv</label>
+            <div className="flex items-center space-x-2">
+              <button 
+                type="button" 
+                onClick={() => handleTubadeArvMuutus(-1)} 
+                className="px-3 py-1.5 border border-gray-300 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tubadeArv"
+                value={tubadeArv}
+                onChange={handleTubadeArvSisestus}
+                min="1"
+                className="input-field w-16 text-center"
+              />
+              <button 
+                type="button" 
+                onClick={() => handleTubadeArvMuutus(1)} 
+                className="px-3 py-1.5 border border-gray-300 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none"
+              >
+                +
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        <PillSelector
-          silt="Rõdu/Terrass"
-          valik1="Jah"
-          valik2="Ei"
-          valitudValik={rõduTerrass}
-          onVali={setRõduTerrass}
-        />
-
-        {rõduTerrass === 'Jah' && (
+        {kinnisvaraTüüp !== 'Maja' && (
           <PillSelector
-            silt="Suur rõdu või terrass"
+            silt="Rõdu/Terrass"
+            valik1="Jah"
+            valik2="Ei"
+            valitudValik={rõduTerrass}
+            onVali={setRõduTerrass}
+          />
+        )}
+
+        {kinnisvaraTüüp !== 'Maja' && rõduTerrass === 'Jah' && (
+          <PillSelector
+            silt="Suur rõdu või terrass (> 6 m²)"
             valik1="Jah"
             valik2="Ei"
             valitudValik={suurRõdu}
@@ -687,115 +822,208 @@ const Mudel = () => {
           />
         )}
 
-        <div className="relative">
-          <label htmlFor="aadress" className="block text-sm font-medium text-gray-700 mb-1">Aadress *</label>
-          <input
-            type="text"
-            id="aadress"
-            value={aadressOtsing}
-            onChange={(e) => setAadressOtsing(e.target.value)}
-            placeholder="Otsi aadressi (nt Pae 1, Tallinn)"
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            autoComplete="off"
-          />
-          {laebSoovitusi && <div className="absolute right-2 top-9 text-xs text-gray-500">Laen...</div>}
-          {aadressSoovitused.length > 0 && (
-            <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg max-h-60 overflow-auto">
-              {aadressSoovitused.map((feature) => (
-                <li
-                  key={feature.id}
-                  onClick={() => handleAadressValik(feature)}
-                  className="p-2 hover:bg-gray-100 cursor-pointer"
-                >
-                  {feature.place_name}
-                </li>
-              ))}
-            </ul>
-          )}
-          {valitudAadress && koordinaadid && (
-            <div className="mt-2 p-2 bg-gray-100 rounded-md text-sm">
-              <p className="font-semibold">Valitud aadress: {valitudAadress.place_name}</p>
-              <p>Koordinaadid: {koordinaadid.longitude.toFixed(3)}, {koordinaadid.latitude.toFixed(3)}</p>
-            </div>
-          )}
-          {valitudAadress && !koordinaadid && aadressOtsing && (
-             <div className="mt-2 p-2 bg-yellow-100 rounded-md text-sm">
-               <p className="font-semibold">Koordinaate ei leitud valitud aadressile.</p>
-            </div>
-          )}
-        </div>
+        {kinnisvaraTüüp !== 'Maja' && (
+          <div className="relative">
+            <label htmlFor="aadress" className="block text-sm font-medium text-gray-700 mb-1">Aadress *</label>
+            <input
+              type="text"
+              id="aadress"
+              value={aadressOtsing}
+              onChange={(e) => setAadressOtsing(e.target.value)}
+              placeholder="Otsi aadressi (nt Pae 1, Tallinn)"
+              className="input-field w-full"
+              autoComplete="off"
+            />
+            {laebSoovitusi && <div className="absolute right-2 top-9 text-xs text-gray-500">Laen...</div>}
+            {aadressSoovitused.length > 0 && (
+              <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg max-h-60 overflow-auto">
+                {aadressSoovitused.map((feature) => (
+                  <li
+                    key={feature.id}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); 
+                      handleAadressValik(feature);
+                    }}
+                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                  >
+                    {feature.place_name}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {valitudAadress && koordinaadid && (
+              <div className="mt-2 p-2 bg-gray-100 rounded-md text-sm">
+                <p className="font-semibold">Valitud aadress: {valitudAadress.place_name}</p>
+              </div>
+            )}
+            {valitudAadress && !koordinaadid && aadressOtsing && (
+               <div className="mt-2 p-2 bg-yellow-100 rounded-md text-sm">
+                 <p className="font-semibold">Koordinaate ei leitud valitud aadressile.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={ennustusteLaeb || !xgbModel || !featureNames}
-          className={`w-full font-semibold py-2.5 px-4 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 ease-in-out ${
-            ennustusteLaeb || !xgbModel || !featureNames
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }`}
+          disabled={ennustusteLaeb || kinnisvaraTüüp === 'Maja'}
+          className="calculate-button w-full"
         >
-          {ennustusteLaeb ? 'Arvutan...' : 
-           !xgbModel || !featureNames ? 'Laadin XGBoost mudelit...' : 
-           'Arvuta hind'}
+          {kinnisvaraTüüp === 'Maja' ? (
+            'Majad ei ole hetkel toetatud'
+          ) : ennustusteLaeb ? (
+            <>
+              <div className="loading-spinner mr-2"></div>
+              Arvutan hinda...
+            </>
+          ) : (
+            'Arvuta hind'
+          )}
         </button>
-      </KaartKomponent>
+      </div>
         </div>
 
-        {(ennustus || sisendParameetrid) && (
+        {(
           <div className="flex-1">
-            <KaartKomponent className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Ennustuse tulemused</h3>
+            <div className="mudel-card p-6 space-y-6 result-enter">
               
-              {ennustus && (
-                <div className="space-y-4">
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h4 className="font-semibold text-blue-900 mb-2">Hinna ennustus</h4>
-                    <div className="space-y-2">
-                      <p className="text-2xl font-bold text-blue-800">
-                        {ennustus.pricePerM2.toLocaleString()} €/m²
-                      </p>
-                      <p className="text-xl text-blue-700">
-                        Koguhind: {ennustus.totalPrice.toLocaleString()} €
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {ennustus.percentile > 75 ? 'Kallim kui keskmine' : 
-                         ennustus.percentile > 50 ? 'Keskmisest kallim' : 
-                         ennustus.percentile > 25 ? 'Keskmisest odavam' : 'Odavam kui keskmine'}
-                      </p>
+              <div className="space-y-4">
+                <div className="prediction-result p-6">
+                  <h4 className="font-bold text-white mb-4 text-center text-xl">Ennustatud hind</h4>
+                  <div className="text-center space-y-3">
+                    {ennustus ? (
+                      <>
+                        <p className="price-display">
+                          {ennustus.pricePerM2.toLocaleString()} €/m²
+                        </p>
+                        <p className="total-price">
+                          Koguhind: {ennustus.totalPrice.toLocaleString()} €
+                        </p>
+                        {ennustus.confidenceRange && (
+                          <div className="mt-2 text-sm text-white/80">
+                            Usaldusvahemik: {ennustus.confidenceRange.lower.toLocaleString()} - {ennustus.confidenceRange.upper.toLocaleString()} €
+                          </div>
+                        )}
+                        {ennustus.neighborhoodAvg && (
+                          <div className="mt-2 text-xs text-white/60">
+                            Piirkonna keskmine: {Math.round(ennustus.neighborhoodAvg)} €/m²
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-white/70">
+                        <p className="price-display text-white/50">-</p>
+                        <p className="total-price text-white/50">-</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="parameters-grid">
+                <h4 className="font-bold text-gray-800 mb-4 text-center col-span-full">Mudeli Sisendparameetrid</h4>
+                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="parameter-item">
+                    <div className="parameter-label">Pindala:</div>
+                    <div className="parameter-value">{sisendParameetrid ? `${sisendParameetrid.pindala_numeric} m²` : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Tubade arv:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.tube : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Vanus:</div>
+                    <div className="parameter-value">{sisendParameetrid ? `${sisendParameetrid.vanus} aastat` : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Korrus:</div>
+                    <div className="parameter-value">{sisendParameetrid ? `${sisendParameetrid.korrus}/${sisendParameetrid.korruseid}` : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Linn:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.city : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Asum:</div>
+                    <div className="parameter-value">{sisendParameetrid && sisendParameetrid.district ? sisendParameetrid.district : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Kaugus keskusest:</div>
+                    <div className="parameter-value">{sisendParameetrid ? `${(sisendParameetrid.distance_from_center/1000).toFixed(1)} km` : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Kohvikud 500m:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.kohvikud_500m : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Restoranid 500m:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.restod_500m : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Poed 500m:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.poed_500m : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Energiaklass:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.energiaklass : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Seisukord:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.seisukord_kategooria : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Materjal:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.materjal_kategooria : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Miljööala:</div>
+                    <div className="parameter-value">
+                      {sisendParameetrid ? (
+                        sisendParameetrid.is_miljooala ? 'Miljööalas' : 
+                        sisendParameetrid.near_miljooala_100m ? 'Lähedal (< 100m)' :
+                        sisendParameetrid.near_miljooala_250m ? 'Lähedal (< 250m)' :
+                        sisendParameetrid.near_miljooala_500m ? 'Lähedal (< 500m)' : 'Ei'
+                      ) : '-'}
                     </div>
                   </div>
-                </div>
-              )}
-
-              {sisendParameetrid && (
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h4 className="font-semibold text-gray-900 mb-3">Mudeli sisendparameetrid</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                    <div><span className="font-medium">Pindala:</span> {sisendParameetrid.pindala_numeric} m²</div>
-                    <div><span className="font-medium">Tubade arv:</span> {sisendParameetrid.tube}</div>
-                    <div><span className="font-medium">Vanus:</span> {sisendParameetrid.vanus} aastat</div>
-                    <div><span className="font-medium">Korrus:</span> {sisendParameetrid.korrus}/{sisendParameetrid.korruseid}</div>
-                    <div><span className="font-medium">Linn:</span> {sisendParameetrid.city}</div>
-                    <div><span className="font-medium">Kohvikud 500m:</span> {sisendParameetrid.kohvikud_500m}</div>
-                    <div><span className="font-medium">Restoranid 500m:</span> {sisendParameetrid.restod_500m}</div>
-                    <div><span className="font-medium">Poed 500m:</span> {sisendParameetrid.poed_500m}</div>
-                    <div><span className="font-medium">Energiaklass:</span> {sisendParameetrid.energiaklass}</div>
-                    <div><span className="font-medium">Seisukord:</span> {sisendParameetrid.seisukord_kategooria}</div>
-                    <div><span className="font-medium">Materjal:</span> {sisendParameetrid.materjal_kategooria}</div>
-                    <div><span className="font-medium">Rõdu/terrass:</span> {sisendParameetrid.balcony_terrace_presence ? 'Jah' : 'Ei'}</div>
-                    {sisendParameetrid['Suur rõdu või terrass'] && (
-                      <div><span className="font-medium">Suur rõdu/terrass:</span> Jah</div>
-                    )}
-                    {sisendParameetrid.objekti_tüüp === 'Maja' && sisendParameetrid.krundi_pindala_numeric > 0 && (
-                      <div><span className="font-medium">Krundi pind:</span> {sisendParameetrid.krundi_pindala_numeric} m²</div>
-                    )}
-                    <div><span className="font-medium">m²/tuba:</span> {sisendParameetrid.area_per_room.toFixed(1)}</div>
-                    <div><span className="font-medium">Korrusesuhe:</span> {sisendParameetrid.floor_ratio.toFixed(2)}</div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Rõdu/terrass:</div>
+                    <div className="parameter-value">{sisendParameetrid ? (sisendParameetrid.balcony_terrace_presence ? 'Jah' : 'Ei') : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Suur rõdu/terrass:</div>
+                    <div className="parameter-value">{sisendParameetrid ? (sisendParameetrid['Suur rõdu või terrass'] ? 'Jah' : 'Ei') : '-'}</div>
+                  </div>
+                  {sisendParameetrid && sisendParameetrid.objekti_tüüp === 'Maja' && sisendParameetrid.krundi_pindala_numeric > 0 && (
+                    <div className="parameter-item">
+                      <div className="parameter-label">Krundi pind:</div>
+                      <div className="parameter-value">{sisendParameetrid.krundi_pindala_numeric} m²</div>
+                    </div>
+                  )}
+                  <div className="parameter-item">
+                    <div className="parameter-label">m²/tuba:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.area_per_room.toFixed(1) : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Suhteline korrus:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.floor_ratio.toFixed(2) : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">X koordinaat (EPSG:3301):</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.x : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Y koordinaat (EPSG:3301):</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.y : '-'}</div>
+                  </div>
+                  <div className="parameter-item">
+                    <div className="parameter-label">Arhitektuuriajastu:</div>
+                    <div className="parameter-value">{sisendParameetrid ? sisendParameetrid.architectural_era : '-'}</div>
                   </div>
                 </div>
-              )}
-            </KaartKomponent>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -2,20 +2,23 @@ import React, { useState } from 'react';
 import Kylgriba from './components/Kylgriba';
 import Kaart from './pages/Kaart'; 
 import Mudel from './pages/Mudel'; 
+import Info from './pages/Info';
 import { Menu } from 'lucide-react';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('map'); 
+  const [currentPage, setCurrentPage] = useState('kaart'); 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'map':
+      case 'kaart':
         return <Kaart />;
       case 'ennustus':
         return <Mudel />;
+      case 'info':
+        return <Info />;
       default:
         return <Kaart />; 
     }
