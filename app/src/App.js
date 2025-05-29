@@ -42,8 +42,14 @@ export default function App() {
             <Menu size={24} />
           </button>
         </header>
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">
-          {renderPage()}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto relative">
+          {currentPage === 'kaart' ? (
+            <div className="absolute inset-0">
+              <Kaart />
+            </div>
+          ) : (
+            renderPage()
+          )}
         </main>
       </div>
 
