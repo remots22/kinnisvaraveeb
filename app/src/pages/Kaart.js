@@ -1011,8 +1011,8 @@ const Kaart = () => {
   }, [aktiivseKihiDetailid, hinnakategooriad]);
 
   return (
-    <div className="relative h-full flex flex-col">
-      <div className="flex-grow p-2 md:p-4 md:pl-6 md:pr-6 md:pt-2 md:pb-2">
+    <div className="absolute inset-0 flex flex-col">
+      <div className="flex-1 p-2 md:p-4 md:pl-6 md:pr-6 md:pt-2 md:pb-2 min-h-0">
         <div ref={kaardiKonteinerRef} className="w-full h-full rounded-lg shadow-md overflow-hidden relative">
           {!mapLayersLoaded && (
             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

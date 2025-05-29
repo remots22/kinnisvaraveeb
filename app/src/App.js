@@ -25,7 +25,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 font-sans">
+    <div className="flex h-screen bg-gray-100 font-sans" style={{ height: '100vh', height: '100dvh' }}>
       <Kylgriba 
         currentPage={currentPage} 
         setCurrentPage={setCurrentPage} 
