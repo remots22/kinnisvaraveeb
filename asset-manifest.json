@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/kinnisvaraveeb/static/css/main.bcada9cd.css",
-    "main.js": "/kinnisvaraveeb/static/js/main.371fce32.js",
+    "main.css": "/kinnisvaraveeb/static/css/main.89bb1695.css",
+    "main.js": "/kinnisvaraveeb/static/js/main.2f7185d4.js",
     "index.html": "/kinnisvaraveeb/index.html",
-    "main.bcada9cd.css.map": "/kinnisvaraveeb/static/css/main.bcada9cd.css.map",
-    "main.371fce32.js.map": "/kinnisvaraveeb/static/js/main.371fce32.js.map"
+    "main.89bb1695.css.map": "/kinnisvaraveeb/static/css/main.89bb1695.css.map",
+    "main.2f7185d4.js.map": "/kinnisvaraveeb/static/js/main.2f7185d4.js.map"
   },
   "entrypoints": [
-    "static/css/main.bcada9cd.css",
-    "static/js/main.371fce32.js"
+    "static/css/main.89bb1695.css",
+    "static/js/main.2f7185d4.js"
   ]
 }
