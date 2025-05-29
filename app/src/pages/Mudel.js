@@ -16,6 +16,7 @@ const Mudel = () => {
   const [seisukord, setSeisukord] = useState('Heas korras');
   const [materjalKategooria, setMaterjalKategooria] = useState('Paneel');
   const [krundiPind, setKrundiPind] = useState('');
+  const [katuseMaterjal, setKatuseMaterjal] = useState('Kivikatus');
   const [suurRõdu, setSuurRõdu] = useState('Ei');
   const [ennustus, setEnnustus] = useState(null);
   const [ennustusteLaeb, setEnnustusteLaeb] = useState(false);
@@ -31,6 +32,7 @@ const Mudel = () => {
   const energiaklassiValikud = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
   const seisukorraValikud = ['Uus', 'Heas korras', 'Keskmises seisukorras', 'Vajab remonti'];
   const materjalValikud = ['Paneel', 'Kivi', 'Puit'];
+  const katuseValikud = ['Kivikatus', 'Plekkkatus', 'Eterniitkatus', 'Bituumen või rullmaterjal'];
 
   const convertWGS84ToEPSG3301Core = (longitude, latitude) => {
     const a = 6378137.0;    
@@ -470,11 +472,13 @@ const Mudel = () => {
     const API_URL = 'https://remots-kinnisvaram.hf.space/predict';
 
     try {
+      const isHouse = features.property_type === 'maja';
+      
       const requestData = {
+        property_type: features.property_type || 'korter',
         pindala: features.pindala_numeric,
         tube: features.tube,
-        korrus: parseInt(features.korrus) || 1,
-        korruste_arv: parseInt(features.korruseid) || 5,
+        korruste_arv: parseInt(features.korruseid) || (isHouse ? 2 : 5),
         ehitusaasta: parseInt(features.ehitusaasta_orig),
         x: features.x,
         y: features.y,
@@ -486,6 +490,13 @@ const Mudel = () => {
         rodu: features.balcony_terrace_presence === 1,
         suur_rodu: features['Suur rõdu või terrass'] === 1
       };
+      
+      if (isHouse) {
+        requestData.krundi_pindala = features.krundi_pindala || 600;
+        requestData.katus = features.katus || null;
+      } else {
+        requestData.korrus = parseInt(features.korrus) || 1;
+      }
       
       const response = await fetch(API_URL, {
         method: 'POST',
@@ -621,6 +632,11 @@ const Mudel = () => {
       alert('Palun täitke kõik kohustuslikud väljad: aadress, pindala ja ehitusaasta');
       return;
     }
+    
+    if (kinnisvaraTüüp === 'Maja' && !krundiPind) {
+      alert('Majade puhul on krundi pind kohustuslik');
+      return;
+    }
 
     setEnnustusteLaeb(true);
     setEnnustus(null);
@@ -640,10 +656,14 @@ const Mudel = () => {
         seisukord,
         materjalKategooria,
         krundiPind,
-        suurRõdu
+        suurRõdu,
+        katuseMaterjal
       };
 
       const features = await calculateModelFeatures(inputData);
+      features.property_type = kinnisvaraTüüp.toLowerCase();
+      features.katus = kinnisvaraTüüp === 'Maja' ? katuseMaterjal : null;
+      features.krundi_pindala = kinnisvaraTüüp === 'Maja' ? parseFloat(krundiPind) : null;
       const prediction = await predictPrice(features);
 
       setSisendParameetrid(features);
@@ -661,55 +681,57 @@ const Mudel = () => {
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1">
           <div className="mudel-card p-6 space-y-6">
-        <PillSelector
-          silt="Kinnisvara tüüp"
-          valik1={KINNISVARA_TÜÜBID[0].name}
-          valik2={KINNISVARA_TÜÜBID[1].name}
-          valitudValik={kinnisvaraTüüp}
-          onVali={setKinnisvaraTüüp}
+        <div>
+          <PillSelector
+            silt="Kinnisvara tüüp"
+            valik1={KINNISVARA_TÜÜBID[0].name}
+            valik2={KINNISVARA_TÜÜBID[1].name}
+            valitudValik={kinnisvaraTüüp}
+            onVali={setKinnisvaraTüüp}
+          />
+          {kinnisvaraTüüp === 'Maja' && (
+            <p className="text-red-500 text-sm mt-2">
+              NB! Majade mudel on hetkel lihtsustatud - tegelikkuses peaks kaasama rohkem tegureid. Hetkel ebatäpne.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="ehitusaasta" className="block text-sm font-medium text-gray-700 mb-1">Ehitusaasta *</label>
+          <input
+            type="number"
+            id="ehitusaasta"
+            value={ehitusaasta}
+            onChange={(e) => setEhitusaasta(e.target.value)}
+            placeholder="Nt 2005"
+            className="input-field w-full"
+            required
+          />
+        </div>
+
+        <Valikuriba
+          silt="Energiaklass"
+          valikud={energiaklassiValikud}
+          valitudVäärtus={energiaklass}
+          onVali={setEnergiaklass}
         />
 
-        {kinnisvaraTüüp !== 'Maja' && (
-          <div>
-            <label htmlFor="ehitusaasta" className="block text-sm font-medium text-gray-700 mb-1">Ehitusaasta</label>
-            <input
-              type="number"
-              id="ehitusaasta"
-              value={ehitusaasta}
-              onChange={(e) => setEhitusaasta(e.target.value)}
-              placeholder="Nt 2005"
-              className="input-field w-full"
-            />
-          </div>
-        )}
-
-        {kinnisvaraTüüp !== 'Maja' && (
-          <Valikuriba
-            silt="Energiaklass"
-            valikud={energiaklassiValikud}
-            valitudVäärtus={energiaklass}
-            onVali={setEnergiaklass}
+        <div>
+          <label htmlFor="pindala" className="block text-sm font-medium text-gray-700 mb-1">Pindala (m²) *</label>
+          <input
+            type="number"
+            id="pindala"
+            value={pindala}
+            onChange={(e) => setPindala(e.target.value)}
+            placeholder="Nt 75"
+            className="input-field w-full"
+            required
           />
-        )}
-
-        {kinnisvaraTüüp !== 'Maja' && (
-          <div>
-            <label htmlFor="pindala" className="block text-sm font-medium text-gray-700 mb-1">Pindala (m²) *</label>
-            <input
-              type="number"
-              id="pindala"
-              value={pindala}
-              onChange={(e) => setPindala(e.target.value)}
-              placeholder="Nt 75"
-              className="input-field w-full"
-              required
-            />
-          </div>
-        )}
+        </div>
 
         {kinnisvaraTüüp === 'Maja' && (
           <div>
-            <label htmlFor="krundiPind" className="block text-sm font-medium text-gray-700 mb-1">Krundi pind (m²)</label>
+            <label htmlFor="krundiPind" className="block text-sm font-medium text-gray-700 mb-1">Krundi pind (m²) *</label>
             <input
               type="number"
               id="krundiPind"
@@ -717,29 +739,26 @@ const Mudel = () => {
               onChange={(e) => setKrundiPind(e.target.value)}
               placeholder="Nt 800"
               className="input-field w-full"
+              required
             />
           </div>
         )}
 
-        {kinnisvaraTüüp !== 'Maja' && (
-          <Valikuriba
-            silt="Seisukord"
-            valikud={seisukorraValikud}
-            valitudVäärtus={seisukord}
-            onVali={setSeisukord}
-          />
-        )}
+        <Valikuriba
+          silt="Seisukord"
+          valikud={seisukorraValikud}
+          valitudVäärtus={seisukord}
+          onVali={setSeisukord}
+        />
 
-        {kinnisvaraTüüp !== 'Maja' && (
-          <Valikuriba
-            silt="Materjal"
-            valikud={materjalValikud}
-            valitudVäärtus={materjalKategooria}
-            onVali={setMaterjalKategooria}
-          />
-        )}
+        <Valikuriba
+          silt="Materjal"
+          valikud={materjalValikud}
+          valitudVäärtus={materjalKategooria}
+          onVali={setMaterjalKategooria}
+        />
 
-        {kinnisvaraTüüp !== 'Maja' && (
+        {kinnisvaraTüüp === 'Korter' ? (
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="korrus" className="block text-sm font-medium text-gray-700 mb-1">Korrus</label>
@@ -764,49 +783,57 @@ const Mudel = () => {
               />
             </div>
           </div>
-        )}
-        
-        {kinnisvaraTüüp !== 'Maja' && (
+        ) : (
           <div>
-            <label htmlFor="tubadeArv" className="block text-sm font-medium text-gray-700 mb-1">Tubade arv</label>
-            <div className="flex items-center space-x-2">
-              <button 
-                type="button" 
-                onClick={() => handleTubadeArvMuutus(-1)} 
-                className="px-3 py-1.5 border border-gray-300 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                id="tubadeArv"
-                value={tubadeArv}
-                onChange={handleTubadeArvSisestus}
-                min="1"
-                className="input-field w-16 text-center"
-              />
-              <button 
-                type="button" 
-                onClick={() => handleTubadeArvMuutus(1)} 
-                className="px-3 py-1.5 border border-gray-300 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none"
-              >
-                +
-              </button>
-            </div>
+            <label htmlFor="korruseid" className="block text-sm font-medium text-gray-700 mb-1">Korruseid kokku</label>
+            <input
+              type="number"
+              id="korruseid"
+              value={korruseid}
+              onChange={(e) => setKorruseid(e.target.value)}
+              placeholder="Nt 2"
+              className="input-field w-full"
+            />
           </div>
         )}
+        
+        <div>
+          <label htmlFor="tubadeArv" className="block text-sm font-medium text-gray-700 mb-1">Tubade arv *</label>
+          <div className="flex items-center space-x-2">
+            <button 
+              type="button" 
+              onClick={() => handleTubadeArvMuutus(-1)} 
+              className="px-3 py-1.5 border border-gray-300 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              id="tubadeArv"
+              value={tubadeArv}
+              onChange={handleTubadeArvSisestus}
+              min="1"
+              className="input-field w-16 text-center"
+            />
+            <button 
+              type="button" 
+              onClick={() => handleTubadeArvMuutus(1)} 
+              className="px-3 py-1.5 border border-gray-300 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none"
+            >
+              +
+            </button>
+          </div>
+        </div>
 
-        {kinnisvaraTüüp !== 'Maja' && (
-          <PillSelector
-            silt="Rõdu/Terrass"
-            valik1="Jah"
-            valik2="Ei"
-            valitudValik={rõduTerrass}
-            onVali={setRõduTerrass}
-          />
-        )}
+        <PillSelector
+          silt="Rõdu/Terrass"
+          valik1="Jah"
+          valik2="Ei"
+          valitudValik={rõduTerrass}
+          onVali={setRõduTerrass}
+        />
 
-        {kinnisvaraTüüp !== 'Maja' && rõduTerrass === 'Jah' && (
+        {rõduTerrass === 'Jah' && (
           <PillSelector
             silt="Suur rõdu või terrass (> 6 m²)"
             valik1="Jah"
@@ -816,57 +843,62 @@ const Mudel = () => {
           />
         )}
 
-        {kinnisvaraTüüp !== 'Maja' && (
-          <div className="relative">
-            <label htmlFor="aadress" className="block text-sm font-medium text-gray-700 mb-1">Aadress *</label>
-            <input
-              type="text"
-              id="aadress"
-              value={aadressOtsing}
-              onChange={(e) => setAadressOtsing(e.target.value)}
-              placeholder="Otsi aadressi (nt Pae 1, Tallinn)"
-              className="input-field w-full"
-              autoComplete="off"
-            />
-            {laebSoovitusi && <div className="absolute right-2 top-9 text-xs text-gray-500">Laen...</div>}
-            {aadressSoovitused.length > 0 && (
-              <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg max-h-60 overflow-auto">
-                {aadressSoovitused.map((feature) => (
-                  <li
-                    key={feature.id}
-                    onMouseDown={(e) => {
-                      e.preventDefault(); 
-                      handleAadressValik(feature);
-                    }}
-                    className="p-2 hover:bg-gray-100 cursor-pointer"
-                  >
-                    {feature.place_name}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {valitudAadress && koordinaadid && (
-              <div className="mt-2 p-2 bg-gray-100 rounded-md text-sm">
-                <p className="font-semibold">Valitud aadress: {valitudAadress.place_name}</p>
-              </div>
-            )}
-            {valitudAadress && !koordinaadid && aadressOtsing && (
-               <div className="mt-2 p-2 bg-yellow-100 rounded-md text-sm">
-                 <p className="font-semibold">Koordinaate ei leitud valitud aadressile.</p>
-              </div>
-            )}
-          </div>
+        {kinnisvaraTüüp === 'Maja' && (
+          <Valikuriba
+            silt="Katuse materjal"
+            valikud={katuseValikud}
+            valitudVäärtus={katuseMaterjal}
+            onVali={setKatuseMaterjal}
+          />
         )}
+
+        <div className="relative">
+          <label htmlFor="aadress" className="block text-sm font-medium text-gray-700 mb-1">Aadress *</label>
+          <input
+            type="text"
+            id="aadress"
+            value={aadressOtsing}
+            onChange={(e) => setAadressOtsing(e.target.value)}
+            placeholder="Otsi aadressi (nt Pae 1, Tallinn)"
+            className="input-field w-full"
+            autoComplete="off"
+          />
+          {laebSoovitusi && <div className="absolute right-2 top-9 text-xs text-gray-500">Laen...</div>}
+          {aadressSoovitused.length > 0 && (
+            <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg max-h-60 overflow-auto">
+              {aadressSoovitused.map((feature) => (
+                <li
+                  key={feature.id}
+                  onMouseDown={(e) => {
+                    e.preventDefault(); 
+                    handleAadressValik(feature);
+                  }}
+                  className="p-2 hover:bg-gray-100 cursor-pointer"
+                >
+                  {feature.place_name}
+                </li>
+              ))}
+            </ul>
+          )}
+          {valitudAadress && koordinaadid && (
+            <div className="mt-2 p-2 bg-gray-100 rounded-md text-sm">
+              <p className="font-semibold">Valitud aadress: {valitudAadress.place_name}</p>
+            </div>
+          )}
+          {valitudAadress && !koordinaadid && aadressOtsing && (
+             <div className="mt-2 p-2 bg-yellow-100 rounded-md text-sm">
+               <p className="font-semibold">Koordinaate ei leitud valitud aadressile.</p>
+            </div>
+          )}
+        </div>
 
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={ennustusteLaeb || kinnisvaraTüüp === 'Maja'}
+          disabled={ennustusteLaeb}
           className="calculate-button w-full"
         >
-          {kinnisvaraTüüp === 'Maja' ? (
-            'Majad ei ole hetkel toetatud'
-          ) : ennustusteLaeb ? (
+          {ennustusteLaeb ? (
             <>
               <div className="loading-spinner mr-2"></div>
               Arvutan hinda...
