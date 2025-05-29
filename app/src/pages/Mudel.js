@@ -391,7 +391,7 @@ const Mudel = () => {
   };
 
   const calculateModelFeatures = async (inputData) => {
-    const { ehitusaasta, pindala, tubadeArv, koordinaadid, kinnisvaraTüüp, krundiPind, suurRõdu } = inputData;
+    const { ehitusaasta, pindala, tubadeArv, koordinaadid, kinnisvaraTüüp, krundiPind, suurRõdu, katuseMaterjal, korrus, korruseid, rõduTerrass, energiaklass, seisukord, materjalKategooria } = inputData;
     const currentYear = new Date().getFullYear();
     const vanus = currentYear - parseInt(ehitusaasta);
     
@@ -430,6 +430,7 @@ const Mudel = () => {
     const architecturalEra = getArchitecturalEra(buildYear);
     
     const features = {
+      property_type: kinnisvaraTüüp === 'Maja' ? 'maja' : 'korter',
       ehitusaasta_orig: buildYear,
       vanus: vanus,
       pindala_numeric: pindala ? parseFloat(pindala) : 50,
@@ -448,7 +449,9 @@ const Mudel = () => {
       is_middle_floor: is_middle_floor ? 1 : 0,
       balcony_terrace_presence: rõduTerrass === 'Jah' ? 1 : 0,
       'Suur rõdu või terrass': suurRõdu === 'Jah' ? 1 : 0,
+      krundi_pindala: kinnisvaraTüüp === 'Maja' && krundiPind ? parseFloat(krundiPind) : null,
       krundi_pindala_numeric: kinnisvaraTüüp === 'Maja' && krundiPind ? parseFloat(krundiPind) : 0,
+      katus: kinnisvaraTüüp === 'Maja' ? katuseMaterjal : null,
       kohvikud_500m: amenities.kohvikud_500m,
       restod_500m: amenities.restod_500m,
       poed_500m: amenities.poed_500m,
@@ -498,6 +501,8 @@ const Mudel = () => {
         requestData.korrus = parseInt(features.korrus) || 1;
       }
       
+      console.log('Saadan andmed:', requestData);
+      
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
@@ -507,8 +512,19 @@ const Mudel = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `API viga: ${response.status}`);
+        let errorMessage = `API viga: ${response.status}`;
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.detail || errorMessage;
+          } else {
+            const errorText = await response.text();
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (e) {
+        }
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
@@ -661,15 +677,13 @@ const Mudel = () => {
       };
 
       const features = await calculateModelFeatures(inputData);
-      features.property_type = kinnisvaraTüüp.toLowerCase();
-      features.katus = kinnisvaraTüüp === 'Maja' ? katuseMaterjal : null;
-      features.krundi_pindala = kinnisvaraTüüp === 'Maja' ? parseFloat(krundiPind) : null;
       const prediction = await predictPrice(features);
 
       setSisendParameetrid(features);
       setEnnustus(prediction);
     } catch (error) {
-      alert('Viga ennustuse tegemisel. Palun proovige uuesti.');
+      console.error('Prediction error:', error);
+      alert(`Viga ennustuse tegemisel: ${error.message}`);
     } finally {
       setEnnustusteLaeb(false);
     }
@@ -688,6 +702,7 @@ const Mudel = () => {
             valik2={KINNISVARA_TÜÜBID[1].name}
             valitudValik={kinnisvaraTüüp}
             onVali={setKinnisvaraTüüp}
+            valik2Disabled={true}
           />
           {kinnisvaraTüüp === 'Maja' && (
             <p className="text-red-500 text-sm mt-2">

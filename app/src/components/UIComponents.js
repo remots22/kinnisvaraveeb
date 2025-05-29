@@ -86,7 +86,7 @@ export const Valikuriba = ({ valikud, valitudVäärtus, onVali, silt, konteineri
   );
 };
 
-export const PillSelector = ({ silt, valik1, valik2, valitudValik, onVali }) => {
+export const PillSelector = ({ silt, valik1, valik2, valitudValik, onVali, valik2Disabled = false }) => {
   const onValik1Valitud = valitudValik === valik1;
   return (
     <div>
@@ -109,9 +109,11 @@ export const PillSelector = ({ silt, valik1, valik2, valitudValik, onVali }) => 
         </button>
         <button
           type="button"
-          onClick={() => onVali(valik2)}
+          onClick={() => !valik2Disabled && onVali(valik2)}
+          disabled={valik2Disabled}
           className={`relative z-10 flex-1 py-2 px-3 text-sm font-medium text-center rounded-full focus:outline-none transition-colors duration-300
-            ${!onValik1Valitud ? 'text-blue-600' : 'text-gray-600 hover:text-gray-700'}`}
+            ${valik2Disabled ? 'text-gray-400 cursor-not-allowed' : 
+              !onValik1Valitud ? 'text-blue-600' : 'text-gray-600 hover:text-gray-700'}`}
         >
           {valik2}
         </button>

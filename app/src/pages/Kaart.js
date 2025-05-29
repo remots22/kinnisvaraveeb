@@ -140,7 +140,7 @@ const Kaart = () => {
   const kaardiKonteinerRef = useRef(null);
   const kaardiRef = useRef(null); 
   
-  const [näitaKihidePaneeli, setNäitaKihidePaneeli] = useState(false); 
+  const [näitaKihidePaneeli, setNäitaKihidePaneeli] = useState(true); 
   const kihidePaneelRef = useRef(null);
   const kihiLülitiNuppRef = useRef(null);
   const [laiendatudKihiKategooriad, setLaiendatudKihiKategooriad] = useState({ 
@@ -1198,7 +1198,7 @@ const Kaart = () => {
                     <h4 className="text-sm font-semibold text-gray-800">{legendiPealkiri}</h4>
                     <button
                       onClick={() => setLegendNähtav(false)}
-                      className="text-xs text-gray-500 hover:text-gray-700 px-2 py-0.5 rounded hover:bg-gray-100 transition-colors"
+                      className="text-xs text-red-400 hover:text-red-600 px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
                       aria-label="Peida legend"
                     >
                       Peida
