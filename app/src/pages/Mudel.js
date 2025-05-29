@@ -124,13 +124,7 @@ const Mudel = () => {
         }
         const geojson = await response.json();
         
-        // kumb koordinaadisusteem
-        if (geojson.features.length > 0 && geojson.features[0].geometry.coordinates) {
-          const firstCoord = geojson.features[0].geometry.type === 'Polygon' 
-            ? geojson.features[0].geometry.coordinates[0][0]
-            : geojson.features[0].geometry.coordinates[0][0][0];
-        }
-        
+
         // kontrollib iga feature labi
         let cityFound = false;
 
